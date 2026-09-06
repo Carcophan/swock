@@ -185,4 +185,38 @@ class MealDatabaseHelper(context: Context) :
         }
         return list
     }
+
+    fun checkpoint() {
+        try {
+            val db = writableDatabase
+            db.rawQuery("PRAGMA wal_checkpoint(FULL)", null)?.use { it.moveToFirst() }
+        } catch (e: Exception) {
+            // Ignore if not in WAL mode or busy
+        }
+    }
+
+    fun remapImagePaths(newImagesDir: java.io.File) {
+        val db = writableDatabase
+        val cursor = db.query(TABLE_MEALS, arrayOf(COL_ID, COL_IMAGE_PATH), null, null, null, null, null)
+        val updates = mutableListOf<Pair<Long, String>>()
+        cursor.use { c ->
+            val idIdx = c.getColumnIndexOrThrow(COL_ID)
+            val pathIdx = c.getColumnIndexOrThrow(COL_IMAGE_PATH)
+            while (c.moveToNext()) {
+                val id = c.getLong(idIdx)
+                val path = c.getString(pathIdx)
+                if (!path.isNullOrBlank()) {
+                    val fileName = java.io.File(path).name
+                    val updatedPath = java.io.File(newImagesDir, fileName).absolutePath
+                    if (updatedPath != path) {
+                        updates.add(id to updatedPath)
+                    }
+                }
+            }
+        }
+        for ((id, updatedPath) in updates) {
+            val cv = ContentValues().apply { put(COL_IMAGE_PATH, updatedPath) }
+            db.update(TABLE_MEALS, cv, "$COL_ID = ?", arrayOf(id.toString()))
+        }
+    }
 }

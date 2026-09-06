@@ -155,4 +155,10 @@ class MealRepository(private val context: Context) {
 
         destination.absolutePath
     }
+
+    fun getDbHelper(): MealDatabaseHelper = dbHelper
+
+    fun closeDatabase() {
+        dbHelper.close()
+    }
 }

@@ -223,7 +223,11 @@ fun MainAppScreen(
                     geminiFoodService = viewModel.geminiFoodService,
                     healthConnectManager = viewModel.healthConnectManager,
                     isHealthConnectAuthorized = isHealthConnectAuthorized,
-                    onRefreshHealthConnect = { viewModel.refreshHealthConnect() }
+                    onRefreshHealthConnect = { viewModel.refreshHealthConnect() },
+                    backupManager = viewModel.backupManager,
+                    googleDriveAuthManager = viewModel.googleDriveAuthManager,
+                    googleDriveService = viewModel.googleDriveService,
+                    onDataRestored = { viewModel.mealRepository.refreshData() }
                 )
             }
 

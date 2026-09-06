@@ -39,6 +39,9 @@ class MainViewModel(
     val profileRepository = UserProfileRepository(application)
     val geminiFoodService = GeminiFoodService(application)
     val healthConnectManager = HealthConnectManager(application)
+    val backupManager = de.carcophan.swock.data.backup.BackupManager(application, mealRepository, profileRepository)
+    val googleDriveAuthManager = de.carcophan.swock.data.backup.GoogleDriveAuthManager(application)
+    val googleDriveService = de.carcophan.swock.data.backup.GoogleDriveService()
 
     private val _healthCaloriesForSelectedDate = MutableStateFlow<HealthCaloriesResult?>(null)
     val healthCaloriesForSelectedDate: StateFlow<HealthCaloriesResult?> = _healthCaloriesForSelectedDate.asStateFlow()
@@ -47,6 +50,20 @@ class MainViewModel(
     val isHealthConnectAuthorized: StateFlow<Boolean> = _isHealthConnectAuthorized.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            profileRepository.profile.collect { prof ->
+                if (prof.autoBackupEnabled && prof.googleAccountEmail.isNotBlank()) {
+                    de.carcophan.swock.data.backup.BackupScheduler.schedule(
+                        application,
+                        prof.backupIntervalDays,
+                        prof.backupWifiOnly
+                    )
+                } else {
+                    de.carcophan.swock.data.backup.BackupScheduler.cancel(application)
+                }
+            }
+        }
+
         viewModelScope.launch {
             combine(
                 mealRepository.selectedDateKey,

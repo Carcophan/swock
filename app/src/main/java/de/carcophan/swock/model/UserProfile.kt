@@ -30,5 +30,10 @@ data class UserProfile(
     val calorieGoal: CalorieGoal = CalorieGoal.MAINTAIN,
     val geminiApiKey: String = "",
     val geminiModel: String = "gemini-3.6-flash",
-    val syncHealthConnect: Boolean = false
+    val syncHealthConnect: Boolean = false,
+    val autoBackupEnabled: Boolean = false,
+    val backupIntervalDays: Int = 1,
+    val backupWifiOnly: Boolean = true,
+    val lastBackupTimestamp: Long = 0L,
+    val googleAccountEmail: String = ""
 )

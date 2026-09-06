@@ -46,6 +46,12 @@ class UserProfileRepository(context: Context) {
         val model = prefs.getString(KEY_GEMINI_MODEL, "gemini-3.6-flash") ?: "gemini-3.6-flash"
         val syncHealthConnect = prefs.getBoolean(KEY_HEALTH_CONNECT, false)
 
+        val autoBackupEnabled = prefs.getBoolean(KEY_AUTO_BACKUP_ENABLED, false)
+        val backupIntervalDays = prefs.getInt(KEY_BACKUP_INTERVAL_DAYS, 1)
+        val backupWifiOnly = prefs.getBoolean(KEY_BACKUP_WIFI_ONLY, true)
+        val lastBackupTimestamp = prefs.getLong(KEY_LAST_BACKUP_TIMESTAMP, 0L)
+        val googleAccountEmail = prefs.getString(KEY_GOOGLE_ACCOUNT_EMAIL, "") ?: ""
+
         return UserProfile(
             age = age,
             gender = gender,
@@ -55,7 +61,12 @@ class UserProfileRepository(context: Context) {
             calorieGoal = goal,
             geminiApiKey = apiKey,
             geminiModel = model,
-            syncHealthConnect = syncHealthConnect
+            syncHealthConnect = syncHealthConnect,
+            autoBackupEnabled = autoBackupEnabled,
+            backupIntervalDays = backupIntervalDays,
+            backupWifiOnly = backupWifiOnly,
+            lastBackupTimestamp = lastBackupTimestamp,
+            googleAccountEmail = googleAccountEmail
         )
     }
 
@@ -70,9 +81,24 @@ class UserProfileRepository(context: Context) {
             .putString(KEY_GEMINI_KEY, newProfile.geminiApiKey)
             .putString(KEY_GEMINI_MODEL, newProfile.geminiModel)
             .putBoolean(KEY_HEALTH_CONNECT, newProfile.syncHealthConnect)
+            .putBoolean(KEY_AUTO_BACKUP_ENABLED, newProfile.autoBackupEnabled)
+            .putInt(KEY_BACKUP_INTERVAL_DAYS, newProfile.backupIntervalDays)
+            .putBoolean(KEY_BACKUP_WIFI_ONLY, newProfile.backupWifiOnly)
+            .putLong(KEY_LAST_BACKUP_TIMESTAMP, newProfile.lastBackupTimestamp)
+            .putString(KEY_GOOGLE_ACCOUNT_EMAIL, newProfile.googleAccountEmail)
             .apply()
 
         _profile.value = newProfile
+    }
+
+    fun updateLastBackupTimestamp(timestamp: Long) {
+        prefs.edit().putLong(KEY_LAST_BACKUP_TIMESTAMP, timestamp).apply()
+        _profile.value = _profile.value.copy(lastBackupTimestamp = timestamp)
+    }
+
+    fun updateGoogleAccountEmail(email: String) {
+        prefs.edit().putString(KEY_GOOGLE_ACCOUNT_EMAIL, email).apply()
+        _profile.value = _profile.value.copy(googleAccountEmail = email)
     }
 
     companion object {
@@ -85,5 +111,11 @@ class UserProfileRepository(context: Context) {
         private const val KEY_GEMINI_KEY = "pref_gemini_key"
         private const val KEY_GEMINI_MODEL = "pref_gemini_model"
         private const val KEY_HEALTH_CONNECT = "pref_health_connect"
+
+        private const val KEY_AUTO_BACKUP_ENABLED = "pref_auto_backup_enabled"
+        private const val KEY_BACKUP_INTERVAL_DAYS = "pref_backup_interval_days"
+        private const val KEY_BACKUP_WIFI_ONLY = "pref_backup_wifi_only"
+        private const val KEY_LAST_BACKUP_TIMESTAMP = "pref_last_backup_timestamp"
+        private const val KEY_GOOGLE_ACCOUNT_EMAIL = "pref_google_account_email"
     }
 }
