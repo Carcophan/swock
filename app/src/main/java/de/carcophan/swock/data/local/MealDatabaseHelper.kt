@@ -13,7 +13,7 @@ class MealDatabaseHelper(context: Context) :
 
     companion object {
         const val DATABASE_NAME = "swock_meals.db"
-        const val DATABASE_VERSION = 2
+        const val DATABASE_VERSION = 3
 
         const val TABLE_MEALS = "meals"
         const val COL_ID = "id"
@@ -29,6 +29,7 @@ class MealDatabaseHelper(context: Context) :
         const val COL_NOTES = "notes"
         const val COL_HEALTH_RATING = "health_rating"
         const val COL_HEALTH_REASON = "health_reason"
+        const val COL_VITAMINS = "vitamins"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -46,7 +47,8 @@ class MealDatabaseHelper(context: Context) :
                 $COL_DATE_KEY TEXT NOT NULL,
                 $COL_NOTES TEXT,
                 $COL_HEALTH_RATING TEXT DEFAULT 'C',
-                $COL_HEALTH_REASON TEXT DEFAULT ''
+                $COL_HEALTH_REASON TEXT DEFAULT '',
+                $COL_VITAMINS TEXT DEFAULT '[]'
             )
         """.trimIndent()
         db.execSQL(createQuery)
@@ -57,6 +59,9 @@ class MealDatabaseHelper(context: Context) :
         if (oldVersion < 2) {
             db.execSQL("ALTER TABLE $TABLE_MEALS ADD COLUMN $COL_HEALTH_RATING TEXT DEFAULT 'C'")
             db.execSQL("ALTER TABLE $TABLE_MEALS ADD COLUMN $COL_HEALTH_REASON TEXT DEFAULT ''")
+        }
+        if (oldVersion < 3) {
+            db.execSQL("ALTER TABLE $TABLE_MEALS ADD COLUMN $COL_VITAMINS TEXT DEFAULT '[]'")
         }
     }
 
@@ -75,6 +80,7 @@ class MealDatabaseHelper(context: Context) :
             put(COL_NOTES, meal.notes)
             put(COL_HEALTH_RATING, meal.healthRating.name)
             put(COL_HEALTH_REASON, meal.healthReason)
+            put(COL_VITAMINS, meal.vitaminsJson)
         }
         return db.insert(TABLE_MEALS, null, values)
     }
@@ -99,6 +105,7 @@ class MealDatabaseHelper(context: Context) :
             put(COL_NOTES, meal.notes)
             put(COL_HEALTH_RATING, meal.healthRating.name)
             put(COL_HEALTH_REASON, meal.healthReason)
+            put(COL_VITAMINS, meal.vitaminsJson)
         }
         return db.update(TABLE_MEALS, values, "$COL_ID = ?", arrayOf(meal.id.toString()))
     }
@@ -117,9 +124,11 @@ class MealDatabaseHelper(context: Context) :
         val notesIndex = c.getColumnIndexOrThrow(COL_NOTES)
         val healthRatingIndex = c.getColumnIndex(COL_HEALTH_RATING)
         val healthReasonIndex = c.getColumnIndex(COL_HEALTH_REASON)
+        val vitaminsIndex = c.getColumnIndex(COL_VITAMINS)
 
         val ratingStr = if (healthRatingIndex != -1) c.getString(healthRatingIndex) else null
         val reasonStr = if (healthReasonIndex != -1) c.getString(healthReasonIndex) ?: "" else ""
+        val vitaminsStr = if (vitaminsIndex != -1) c.getString(vitaminsIndex) ?: "[]" else "[]"
 
         return MealEntry(
             id = c.getLong(idIndex),
@@ -134,7 +143,8 @@ class MealDatabaseHelper(context: Context) :
             dateKey = c.getString(dateKeyIndex),
             notes = c.getString(notesIndex) ?: "",
             healthRating = HealthRating.fromString(ratingStr),
-            healthReason = reasonStr
+            healthReason = reasonStr,
+            vitaminsJson = vitaminsStr
         )
     }
 

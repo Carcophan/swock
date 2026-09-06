@@ -296,6 +296,11 @@ fun DashboardScreen(
                 )
             }
 
+            // 2b. Vitamin Overview Card
+            item {
+                VitaminOverviewCard(meals = meals)
+            }
+
             // 3. Section Header
             item {
                 Row(
@@ -450,7 +455,8 @@ fun DashboardScreen(
                 portionDesc = meal.portionDesc,
                 notes = meal.notes,
                 healthRating = meal.healthRating,
-                healthReason = meal.healthReason
+                healthReason = meal.healthReason,
+                vitamins = meal.getVitamins()
             ),
             existingMealId = meal.id,
             title = "Mahlzeit bearbeiten",

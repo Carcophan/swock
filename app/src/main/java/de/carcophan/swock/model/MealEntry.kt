@@ -36,8 +36,11 @@ data class MealEntry(
     val dateKey: String, // Format: yyyy-MM-dd
     val notes: String = "",
     val healthRating: HealthRating = HealthRating.C,
-    val healthReason: String = ""
-)
+    val healthReason: String = "",
+    val vitaminsJson: String = "[]"
+) {
+    fun getVitamins(): List<VitaminAmount> = VitaminAmount.listFromJsonString(vitaminsJson)
+}
 
 data class FoodAnalysisResult(
     val name: String,
@@ -50,5 +53,7 @@ data class FoodAnalysisResult(
     val healthRating: HealthRating = HealthRating.C,
     val healthReason: String = "",
     val category: String = "",
-    val emoji: String = ""
+    val emoji: String = "",
+    val vitamins: List<VitaminAmount> = emptyList()
 )
+

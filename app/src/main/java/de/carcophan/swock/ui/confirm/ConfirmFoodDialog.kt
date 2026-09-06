@@ -40,6 +40,10 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.filled.Spa
+import de.carcophan.swock.model.VitaminAmount
+import de.carcophan.swock.model.VitaminType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -119,6 +123,9 @@ fun ConfirmFoodDialog(
     var healthRating by rememberSaveable { mutableStateOf(initialAnalysis.healthRating) }
     var healthReason by rememberSaveable { mutableStateOf(initialAnalysis.healthReason) }
 
+    val baseVitamins = remember { initialAnalysis.vitamins }
+    var currentVitamins by remember { mutableStateOf(initialAnalysis.vitamins) }
+
     fun updateForQuantity(newQ: Double) {
         if (newQ <= 0.0) return
         val clamped = Math.round(newQ * 10.0) / 10.0
@@ -133,6 +140,10 @@ fun ConfirmFoodDialog(
         proteinText = formatDecimal(newProtein)
         carbsText = formatDecimal(newCarbs)
         fatText = formatDecimal(newFat)
+
+        currentVitamins = baseVitamins.map { vit ->
+            vit.copy(amount = Math.round(vit.amount * clamped * 100.0) / 100.0)
+        }
 
         if (!isPortionCustomized) {
             val qStr = if (clamped % 1.0 == 0.0) clamped.toInt().toString() else String.format(Locale.GERMAN, "%.1f", clamped)
@@ -566,6 +577,66 @@ fun ConfirmFoodDialog(
                     }
                 }
 
+                if (currentVitamins.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Spa,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Enthaltene Vitamine (${currentVitamins.size})",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                for (vit in currentVitamins) {
+                                    val amountStr = if (vit.amount % 1.0 == 0.0) vit.amount.toInt().toString() else String.format(Locale.GERMAN, "%.1f", vit.amount)
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .background(Color(vit.type.tagColorHex), CircleShape)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "${vit.type.shortName}: $amountStr ${vit.unit}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Portion
@@ -647,7 +718,8 @@ fun ConfirmFoodDialog(
                                 dateKey = dateKey,
                                 notes = notes,
                                 healthRating = healthRating,
-                                healthReason = healthReason
+                                healthReason = healthReason,
+                                vitaminsJson = VitaminAmount.listToJsonString(currentVitamins)
                             )
                             onConfirm(entry)
                         },

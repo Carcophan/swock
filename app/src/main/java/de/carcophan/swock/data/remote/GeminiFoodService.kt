@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 import de.carcophan.swock.model.FoodAnalysisResult
 import de.carcophan.swock.model.HealthRating
+import de.carcophan.swock.model.VitaminAmount
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -131,6 +132,8 @@ class GeminiFoodService(private val context: Context) {
             - "E": Ungesund (Orange) – Stark verarbeitet, frittiert, hoher Anteil an gesättigten Fetten oder zugesetztem Zucker (z. B. Burger, Pommes, Pizza, Kuchen).
             - "F": Sehr ungesund (Rot) – Sehr hoher Gehalt an Industriezucker, Transfetten, Süßigkeiten, Chips, Softdrinks, Energy-Drinks, Alkohol oder hochgradig verarbeitetes Fast Food.
             
+            Ermittle außerdem die enthaltenen Vitaminarten (z. B. Vitamin C, Vitamin A, Vitamin D, Vitamin E, Vitamin K, Vitamin B1, B2, B6, B12 etc.) mit geschätzter Menge und Einheit (mg oder µg).
+            
             Gib deine Antwort AUSSCHLIESSLICH im folgenden JSON-Format zurück:
             {
               "name": "Name der Speise oder des Getränks auf Deutsch",
@@ -143,7 +146,11 @@ class GeminiFoodService(private val context: Context) {
               "healthRating": "A",
               "healthReason": "Reich an Proteinen und Ballaststoffen, wenig Zucker",
               "category": "PASTA",
-              "emoji": "🍝"
+              "emoji": "🍝",
+              "vitamins": [
+                {"name": "Vitamin C", "amount": 25.0, "unit": "mg"},
+                {"name": "Vitamin A", "amount": 150.0, "unit": "µg"}
+              ]
             }
             Wähle für "category" eine der folgenden Kategorien: PASTA, PIZZA, BURGER, SALAD, FRUIT, MEAT, FISH, BREAKFAST, EGG, BREAD, SOUP, ASIAN_RICE, DESSERT, ICE_CREAM, COFFEE, DRINK, DEFAULT.
             Wähle für "emoji" genau ein passendes Food-Emoji (z. B. 🍝, 🍕, 🥗, ☕).
@@ -206,6 +213,8 @@ class GeminiFoodService(private val context: Context) {
             - "E": Ungesund (Orange) – Stark verarbeitet, frittiert, hoher Anteil an gesättigten Fetten oder zugesetztem Zucker (z. B. Burger, Pommes, Pizza, Kuchen).
             - "F": Sehr ungesund (Rot) – Sehr hoher Gehalt an Industriezucker, Transfetten, Süßigkeiten, Chips, Softdrinks, Energy-Drinks, Alkohol oder hochgradig verarbeitetes Fast Food.
             
+            Ermittle außerdem die enthaltenen Vitaminarten (z. B. Vitamin C, Vitamin A, Vitamin D, Vitamin E, Vitamin K, Vitamin B1, B2, B6, B12 etc.) mit geschätzter Menge und Einheit (mg oder µg).
+            
             Gib deine Antwort AUSSCHLIESSLICH im folgenden JSON-Format zurück:
             {
               "name": "Name der Speise oder des Getränks auf Deutsch",
@@ -216,8 +225,16 @@ class GeminiFoodService(private val context: Context) {
               "portionDesc": "1 Portion, ca. 350g",
               "notes": "Zutaten oder kurze Anmerkung",
               "healthRating": "A",
-              "healthReason": "Reich an Proteinen und Ballaststoffen, wenig Zucker"
+              "healthReason": "Reich an Proteinen und Ballaststoffen, wenig Zucker",
+              "category": "PASTA",
+              "emoji": "🍝",
+              "vitamins": [
+                {"name": "Vitamin C", "amount": 25.0, "unit": "mg"},
+                {"name": "Vitamin A", "amount": 150.0, "unit": "µg"}
+              ]
             }
+            Wähle für "category" eine der folgenden Kategorien: PASTA, PIZZA, BURGER, SALAD, FRUIT, MEAT, FISH, BREAKFAST, EGG, BREAD, SOUP, ASIAN_RICE, DESSERT, ICE_CREAM, COFFEE, DRINK, DEFAULT.
+            Wähle für "emoji" genau ein passendes Food-Emoji (z. B. 🍝, 🍕, 🥗, ☕).
         """.trimIndent()
 
         val rootJson = JSONObject().apply {
@@ -321,6 +338,18 @@ class GeminiFoodService(private val context: Context) {
         val category = foodJson.optString("category", "")
         val emoji = foodJson.optString("emoji", "")
 
+        val vitaminsList = mutableListOf<VitaminAmount>()
+        val vitaminsArray = foodJson.optJSONArray("vitamins")
+        if (vitaminsArray != null) {
+            for (i in 0 until vitaminsArray.length()) {
+                val vitObj = vitaminsArray.optJSONObject(i) ?: continue
+                val amount = VitaminAmount.fromJsonObject(vitObj)
+                if (amount != null && amount.amount > 0.0) {
+                    vitaminsList.add(amount)
+                }
+            }
+        }
+
         return FoodAnalysisResult(
             name = name,
             calories = calories,
@@ -332,7 +361,8 @@ class GeminiFoodService(private val context: Context) {
             healthRating = healthRating,
             healthReason = healthReason,
             category = category,
-            emoji = emoji
+            emoji = emoji,
+            vitamins = vitaminsList
         )
     }
 
