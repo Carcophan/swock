@@ -29,11 +29,20 @@ data class UserProfile(
     val activityLevel: ActivityLevel = ActivityLevel.LIGHT,
     val calorieGoal: CalorieGoal = CalorieGoal.MAINTAIN,
     val geminiApiKey: String = "",
-    val geminiModel: String = "gemini-3.6-flash",
+    val geminiModel: String = "gemini-3.8-flash",
     val syncHealthConnect: Boolean = false,
     val autoBackupEnabled: Boolean = false,
     val backupIntervalDays: Int = 1,
     val backupWifiOnly: Boolean = true,
     val lastBackupTimestamp: Long = 0L,
     val googleAccountEmail: String = ""
-)
+) {
+    val geminiModelDisplayName: String
+        get() = when (geminiModel) {
+            "gemini-3.8-flash" -> "Gemini 3.8 Flash"
+            else -> {
+                val clean = geminiModel.removePrefix("gemini-").removeSuffix("-flash")
+                if (clean.isNotBlank()) "Gemini $clean Flash" else "Gemini 3.8 Flash"
+            }
+        }
+}

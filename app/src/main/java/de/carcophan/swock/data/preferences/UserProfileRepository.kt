@@ -43,8 +43,8 @@ class UserProfileRepository(context: Context) {
         }
 
         val apiKey = prefs.getString(KEY_GEMINI_KEY, "") ?: ""
-        val rawModel = prefs.getString(KEY_GEMINI_MODEL, "gemini-3.6-flash") ?: "gemini-3.6-flash"
-        val model = if (rawModel in listOf("gemini-2.5-flash", "gemini-1.5-flash")) "gemini-3.6-flash" else rawModel
+        val rawModel = prefs.getString(KEY_GEMINI_MODEL, "gemini-3.8-flash") ?: "gemini-3.8-flash"
+        val model = if (rawModel != "gemini-3.8-flash") "gemini-3.8-flash" else rawModel
         val syncHealthConnect = prefs.getBoolean(KEY_HEALTH_CONNECT, false)
 
         val autoBackupEnabled = prefs.getBoolean(KEY_AUTO_BACKUP_ENABLED, false)

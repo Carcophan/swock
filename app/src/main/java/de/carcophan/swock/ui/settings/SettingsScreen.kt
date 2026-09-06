@@ -47,10 +47,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -130,7 +132,7 @@ fun SettingsScreen(
     var geminiApiKey by remember(currentProfile) { mutableStateOf(currentProfile.geminiApiKey) }
     var geminiModel by remember(currentProfile) {
         mutableStateOf(
-            if (currentProfile.geminiModel in listOf("gemini-2.5-flash", "gemini-1.5-flash")) "gemini-3.6-flash"
+            if (currentProfile.geminiModel != "gemini-3.8-flash") "gemini-3.8-flash"
             else currentProfile.geminiModel
         )
     }
@@ -250,6 +252,13 @@ fun SettingsScreen(
     val previewBmr = remember(previewProfile) { CalorieCalculator.calculateBmr(previewProfile) }
     val previewTdee = remember(previewProfile) { CalorieCalculator.calculateTdee(previewProfile) }
     val previewTarget = remember(previewProfile) { CalorieCalculator.calculateDailyTarget(previewProfile) }
+
+    val latestProfile by rememberUpdatedState(previewProfile)
+    DisposableEffect(Unit) {
+        onDispose {
+            profileRepository.updateProfile(latestProfile)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -678,16 +687,17 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf("gemini-3.6-flash").forEach { modelOption ->
+                    listOf("gemini-3.8-flash").forEach { modelOption ->
                         FilterChip(
                             selected = geminiModel == modelOption,
                             onClick = {
                                 geminiModel = modelOption
                                 keyTestResult = null
+                                profileRepository.updateProfile(previewProfile.copy(geminiModel = modelOption))
                             },
                             label = {
                                 Text(
-                                    text = "3.6 Flash",
+                                    text = "3.8 Flash",
                                     style = MaterialTheme.typography.labelSmall
                                 )
                             }
@@ -733,6 +743,14 @@ fun SettingsScreen(
                                 val res = geminiFoodService.testApiKey(geminiApiKey.trim(), geminiModel)
                                 isTestingKey = false
                                 keyTestResult = res
+                                if (res.isSuccess) {
+                                    profileRepository.updateProfile(
+                                        previewProfile.copy(
+                                            geminiApiKey = geminiApiKey.trim(),
+                                            geminiModel = geminiModel
+                                        )
+                                    )
+                                }
                             }
                         },
                         enabled = geminiApiKey.isNotBlank() && !isTestingKey,

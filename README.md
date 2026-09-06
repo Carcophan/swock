@@ -73,8 +73,7 @@
 | **UI-Framework** | Jetpack Compose mit Material 3 (`androidx.compose.material3`) |
 | **Architektur** | MVVM (Model-View-ViewModel), StateFlow, Coroutines |
 | **Lokale Datenbank** | SQLite (`SQLiteOpenHelper`) für volle Unabhängigkeit und Geschwindigkeit |
-| **Netzwerk & HTTP** | OkHttp 4 |
-| **Künstliche Intelligenz** | Google Gemini API (`gemini-3.6-flash`), Google Imagen 3 (`imagen-3.0-generate-002`) |
+| **Künstliche Intelligenz** | Google Gemini API (`gemini-3.8-flash`), Google Imagen 3 (`imagen-3.0-generate-002`) |
 | **Fitness / Health** | AndroidX Health Connect Client (`androidx.health.connect:connect-client`) |
 | **Cloud & Auth** | Google Play Services Auth (`play-services-auth`), Google Drive REST API v3 |
 | **Hintergrundprozesse**| AndroidX WorkManager (`androidx.work:work-runtime-ktx`) |
@@ -157,7 +156,7 @@ Für die KI-gestützte Foto- und Textanalyse benötigst du einen kostenlosen Gem
 1. Rufe das [Google AI Studio](https://aistudio.google.com/) auf und erstelle einen API-Key.
 2. Öffne die **Swock** App und navigiere zum Tab **Profil (Einstellungen)**.
 3. Füge deinen API-Schlüssel im Feld **Google Gemini API Key** ein und tippe auf **API-Key testen**.
-4. Das Standardmodell ist `gemini-3.6-flash`.
+4. Das verwendete Modell ist `gemini-3.8-flash`.
 
 ### 2. Health Connect (Smartwatch-Kalorien)
 1. Aktiviere in den App-Einstellungen den Schalter **Health Connect synchronisieren**.

@@ -39,7 +39,7 @@ class GeminiFoodService(private val context: Context) {
     suspend fun analyzeFoodImage(
         imagePath: String,
         apiKey: String,
-        preferredModel: String = "gemini-3.6-flash"
+        preferredModel: String = "gemini-3.8-flash"
     ): Result<FoodAnalysisResult> = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
             return@withContext Result.failure(
@@ -59,8 +59,8 @@ class GeminiFoodService(private val context: Context) {
                 IllegalStateException("Konnte das Bild nicht für die Analyse vorbereiten.")
             )
 
-        // Use preferredModel (gemini-3.6-flash)
-        val candidateModels = listOf("gemini-3.6-flash")
+        // Use preferredModel (gemini-3.8-flash)
+        val candidateModels = listOf("gemini-3.8-flash")
         val modelsToTry = (listOf(preferredModel) + candidateModels).distinct()
         var lastError: Exception? = null
 
@@ -85,7 +85,7 @@ class GeminiFoodService(private val context: Context) {
     suspend fun analyzeFoodDescription(
         description: String,
         apiKey: String,
-        preferredModel: String = "gemini-3.6-flash"
+        preferredModel: String = "gemini-3.8-flash"
     ): Result<FoodAnalysisResult> = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
             return@withContext Result.failure(
@@ -99,7 +99,7 @@ class GeminiFoodService(private val context: Context) {
             )
         }
 
-        val candidateModels = listOf("gemini-3.6-flash")
+        val candidateModels = listOf("gemini-3.8-flash")
         val modelsToTry = (listOf(preferredModel) + candidateModels).distinct()
         var lastError: Exception? = null
 
@@ -373,7 +373,7 @@ class GeminiFoodService(private val context: Context) {
         )
     }
 
-    suspend fun testApiKey(apiKey: String, model: String = "gemini-3.6-flash"): Result<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun testApiKey(apiKey: String, model: String = "gemini-3.8-flash"): Result<Boolean> = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
             return@withContext Result.failure(IllegalArgumentException("Der API-Schlüssel ist leer."))
         }
@@ -492,7 +492,7 @@ class GeminiFoodService(private val context: Context) {
         targetCalories: Int,
         activeCaloriesBurned: Int,
         apiKey: String,
-        preferredModel: String = "gemini-3.6-flash"
+        preferredModel: String = "gemini-3.8-flash"
     ): Result<DailyNutritionAdvice> = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
             return@withContext Result.failure(
@@ -562,7 +562,7 @@ class GeminiFoodService(private val context: Context) {
             }
         """.trimIndent()
 
-        val candidateModels = listOf("gemini-3.6-flash")
+        val candidateModels = listOf("gemini-3.8-flash")
         val modelsToTry = (listOf(preferredModel) + candidateModels).distinct()
         var lastError: Exception? = null
 

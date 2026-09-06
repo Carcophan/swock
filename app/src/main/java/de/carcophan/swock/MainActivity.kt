@@ -329,7 +329,7 @@ fun MainAppScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Gemini analysiert dein Essen...",
+                                    text = "${profile.geminiModelDisplayName} analysiert dein Essen...",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -433,6 +433,7 @@ fun MainAppScreen(
                 ConfirmFoodDialog(
                     imagePath = imagePath,
                     initialAnalysis = analysis,
+                    subtitle = "Von ${profile.geminiModelDisplayName} ermittelt – passe die Werte bei Bedarf an:",
                     onDismiss = { viewModel.dismissAnalysisResult() },
                     onConfirm = { confirmedMeal ->
                         viewModel.saveConfirmedMeal(confirmedMeal) {

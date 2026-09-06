@@ -46,7 +46,7 @@ class BackupManagerTest {
         val extractDir = tempFolder.newFolder("extracted")
 
         val dummyDbContent = "SQLite format 3\u0000dummy_database_data"
-        val dummyProfileContent = "{\"geminiModel\":\"gemini-3.6-flash\",\"age\":28}"
+        val dummyProfileContent = "{\"geminiModel\":\"gemini-3.8-flash\",\"age\":28}"
         val dummyImage1Content = "JPEG_DATA_12345"
         val dummyImage2Content = "JPEG_DATA_67890"
 
