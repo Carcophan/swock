@@ -4,8 +4,15 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
+import de.carcophan.swock.model.AvoidanceItem
+import de.carcophan.swock.model.AvoidanceSeverity
+import de.carcophan.swock.model.DailyNutritionAdvice
 import de.carcophan.swock.model.FoodAnalysisResult
 import de.carcophan.swock.model.HealthRating
+import de.carcophan.swock.model.MealEntry
+import de.carcophan.swock.model.RecommendationCategory
+import de.carcophan.swock.model.RecommendationItem
+import de.carcophan.swock.model.UserProfile
 import de.carcophan.swock.model.VitaminAmount
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -478,4 +485,242 @@ class GeminiFoodService(private val context: Context) {
             null
         }
     }
+
+    suspend fun generateDailyNutritionAdvice(
+        meals: List<MealEntry>,
+        profile: UserProfile,
+        targetCalories: Int,
+        activeCaloriesBurned: Int,
+        apiKey: String,
+        preferredModel: String = "gemini-3.6-flash"
+    ): Result<DailyNutritionAdvice> = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank()) {
+            return@withContext Result.failure(
+                IllegalStateException("Bitte hinterlege zuerst deinen Gemini API-Schlüssel in den Profileinstellungen.")
+            )
+        }
+
+        val totalCalories = meals.sumOf { it.calories }
+        val totalProtein = meals.sumOf { it.proteinGrams }
+        val totalCarbs = meals.sumOf { it.carbsGrams }
+        val totalFat = meals.sumOf { it.fatGrams }
+        val remainingCalories = targetCalories - totalCalories
+
+        val mealsSummary = if (meals.isEmpty()) {
+            "Bisher wurden heute noch keine Mahlzeiten oder Getränke verzehrt."
+        } else {
+            meals.joinToString("\n") { meal ->
+                "- ${meal.name}: ${meal.calories} kcal, ${meal.proteinGrams}g Protein, ${meal.carbsGrams}g KH, ${meal.fatGrams}g Fett (Portion: ${meal.portionDesc}, Ampel: ${meal.healthRating.grade} - ${meal.healthRating.label})"
+            }
+        }
+
+        val promptText = """
+            Du bist ein professioneller Ernährungscoach und Diätologe.
+            Analysiere den heutigen Ernährungstag einer Person und gib fundierte, alltagstaugliche Empfehlungen:
+            
+            Benutzerprofil:
+            - Alter: ${profile.age} Jahre, Geschlecht: ${profile.gender.displayName}
+            - Größe: ${profile.heightCm} cm, Gewicht: ${profile.weightKg} kg
+            - Aktivitätslevel: ${profile.activityLevel.displayName} (${profile.activityLevel.description})
+            - Kalorienziel: ${profile.calorieGoal.displayName}
+            - Berechnetes Tagesziel: $targetCalories kcal (inkl. $activeCaloriesBurned kcal verbrannter Aktivität)
+            
+            Bisher verzehrt am heutigen Tag:
+            - Kalorien: $totalCalories kcal (Rest: $remainingCalories kcal)
+            - Eiweiß: ${String.format("%.1f", totalProtein)}g
+            - Kohlenhydrate: ${String.format("%.1f", totalCarbs)}g
+            - Fett: ${String.format("%.1f", totalFat)}g
+            
+            Bisherige Mahlzeiten:
+            $mealsSummary
+            
+            Deine Aufgabe:
+            1. Gib konkrete Vorschläge zu Speisen und/oder Getränken ("recommendations"), die die Person heute noch ZUSÄTZLICH essen oder trinken sollte, um die Nahrungsaufnahme optimal auszubalancieren (z.B. fehlende Proteine auffüllen, gesunde Fette, ballaststoffreiches Gemüse, Obst mit spezifischen Vitaminen, oder gezielte Flüssigkeitszufuhr/Hydration).
+            2. Gib konkrete Ratschläge ("avoidances"), was die Person für den aktuellen Tag VERMEIDEN sollte, weil sie evtl. schon genug oder zu viel davon hatte (z.B. überschüssige Fette, einfache Zucker, verarbeitete Speisen, Alkohol/flüssige Kalorien, oder weil das Kalorienbudget fast erschöpft ist).
+            
+            Gib deine Antwort AUSSCHLIESSLICH im folgenden JSON-Format zurück:
+            {
+              "balanceScore": "Kurzer prägnanter Status z.B. 'Leichtes Proteindefizit' oder 'Ausgewogen'",
+              "summaryText": "1-2 Sätze motivierende und ehrliche Gesamteinschätzung des bisherigen Tages.",
+              "recommendations": [
+                {
+                  "title": "Titel des Vorschlags",
+                  "items": ["Konkretes Beispiel 1", "Konkretes Beispiel 2"],
+                  "reason": "Genau Begründung, warum das heute noch fehlt",
+                  "category": "FOOD", // oder "DRINK"
+                  "nutrientFocus": "z.B. Eiweiß & Zink"
+                }
+              ],
+              "avoidances": [
+                {
+                  "title": "Titel der Warnung / Vermeidung",
+                  "items": ["Konkretes No-Go 1", "Konkretes No-Go 2"],
+                  "reason": "Genaue Begründung, warum man davon heute schon genug/zu viel hatte",
+                  "severity": "HIGH" // oder "MODERATE" oder "INFO"
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val candidateModels = listOf("gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash")
+        val modelsToTry = (listOf(preferredModel) + candidateModels).distinct()
+        var lastError: Exception? = null
+
+        for (modelName in modelsToTry) {
+            try {
+                val url = "https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey"
+                val rootJson = JSONObject().apply {
+                    val contentsArray = JSONArray()
+                    val contentObj = JSONObject().apply {
+                        val partsArray = JSONArray()
+                        partsArray.put(JSONObject().apply {
+                            put("text", promptText)
+                        })
+                        put("parts", partsArray)
+                    }
+                    contentsArray.put(contentObj)
+                    put("contents", contentsArray)
+
+                    val genConfig = JSONObject().apply {
+                        put("response_mime_type", "application/json")
+                        put("temperature", 0.3)
+                    }
+                    put("generationConfig", genConfig)
+                }
+
+                val request = Request.Builder()
+                    .url(url)
+                    .post(rootJson.toString().toRequestBody(jsonMediaType))
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string() ?: ""
+
+                if (!response.isSuccessful) {
+                    val errorMsg = try {
+                        val errObj = JSONObject(responseBody).optJSONObject("error")
+                        errObj?.optString("message") ?: "HTTP ${response.code}: $responseBody"
+                    } catch (e: Exception) {
+                        "HTTP ${response.code}: $responseBody"
+                    }
+                    throw RuntimeException(errorMsg)
+                }
+
+                val advice = parseAdviceResponse(responseBody)
+                return@withContext Result.success(advice)
+            } catch (e: Exception) {
+                lastError = e
+                if (e.message?.contains("API_KEY_INVALID", ignoreCase = true) == true ||
+                    e.message?.contains("PERMISSION_DENIED", ignoreCase = true) == true
+                ) {
+                    return@withContext Result.failure(e)
+                }
+            }
+        }
+
+        Result.failure(lastError ?: RuntimeException("Unbekannter Fehler bei der Generierung der Ernährungsempfehlungen."))
+    }
+
+    private fun parseAdviceResponse(responseBody: String): DailyNutritionAdvice {
+        val root = JSONObject(responseBody)
+        val candidates = root.optJSONArray("candidates")
+            ?: throw RuntimeException("Keine Antwort von Gemini erhalten.")
+        if (candidates.length() == 0) {
+            throw RuntimeException("Gemini hat keine Kandidaten zurückgeliefert.")
+        }
+
+        val candidate = candidates.getJSONObject(0)
+        val content = candidate.getJSONObject("content")
+        val parts = content.getJSONArray("parts")
+        val text = parts.getJSONObject(0).getString("text")
+
+        val cleanedJson = text.trim()
+            .removePrefix("```json")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+
+        val json = JSONObject(cleanedJson)
+        val balanceScore = json.optString("balanceScore", "Tages-Empfehlungen")
+        val summaryText = json.optString("summaryText", "")
+
+        val recList = mutableListOf<RecommendationItem>()
+        val recArray = json.optJSONArray("recommendations")
+        if (recArray != null) {
+            for (i in 0 until recArray.length()) {
+                val itemObj = recArray.optJSONObject(i) ?: continue
+                val title = itemObj.optString("title", "")
+                val reason = itemObj.optString("reason", "")
+                val nutrientFocus = itemObj.optString("nutrientFocus", "")
+                val categoryStr = itemObj.optString("category", "FOOD")
+                val category = if (categoryStr.equals("DRINK", ignoreCase = true)) {
+                    RecommendationCategory.DRINK
+                } else RecommendationCategory.FOOD
+
+                val items = mutableListOf<String>()
+                val itemsArr = itemObj.optJSONArray("items")
+                if (itemsArr != null) {
+                    for (j in 0 until itemsArr.length()) {
+                        items.add(itemsArr.optString(j))
+                    }
+                }
+
+                if (title.isNotBlank()) {
+                    recList.add(
+                        RecommendationItem(
+                            title = title,
+                            items = items,
+                            reason = reason,
+                            category = category,
+                            nutrientFocus = nutrientFocus
+                        )
+                    )
+                }
+            }
+        }
+
+        val avoidList = mutableListOf<AvoidanceItem>()
+        val avoidArray = json.optJSONArray("avoidances")
+        if (avoidArray != null) {
+            for (i in 0 until avoidArray.length()) {
+                val itemObj = avoidArray.optJSONObject(i) ?: continue
+                val title = itemObj.optString("title", "")
+                val reason = itemObj.optString("reason", "")
+                val severityStr = itemObj.optString("severity", "MODERATE")
+                val severity = when (severityStr.uppercase()) {
+                    "HIGH" -> AvoidanceSeverity.HIGH
+                    "INFO" -> AvoidanceSeverity.INFO
+                    else -> AvoidanceSeverity.MODERATE
+                }
+
+                val items = mutableListOf<String>()
+                val itemsArr = itemObj.optJSONArray("items")
+                if (itemsArr != null) {
+                    for (j in 0 until itemsArr.length()) {
+                        items.add(itemsArr.optString(j))
+                    }
+                }
+
+                if (title.isNotBlank()) {
+                    avoidList.add(
+                        AvoidanceItem(
+                            title = title,
+                            items = items,
+                            reason = reason,
+                            severity = severity
+                        )
+                    )
+                }
+            }
+        }
+
+        return DailyNutritionAdvice(
+            balanceScore = balanceScore,
+            summaryText = summaryText,
+            recommendations = recList,
+            avoidances = avoidList,
+            isAiGenerated = true
+        )
+    }
 }
+

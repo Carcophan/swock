@@ -245,18 +245,42 @@ fun MainAppScreen(
                 modifier = Modifier.fillMaxSize()
             ) { targetScreen ->
                 when (targetScreen) {
-                    Screen.DASHBOARD -> DashboardScreen(
-                        mealRepository = viewModel.mealRepository,
-                        profileRepository = viewModel.profileRepository,
-                        onCapturePhoto = { startCameraCapture() },
-                        onPickImage = { startGalleryPick() },
-                        onDescribeMeal = { text -> viewModel.processTextDescription(text) },
-                        healthCaloriesResult = healthCaloriesResult,
-                        onRefresh = {
-                            viewModel.mealRepository.refreshData()
-                            viewModel.refreshHealthConnect()
+                    Screen.DASHBOARD -> {
+                        val selectedDateKey by viewModel.mealRepository.selectedDateKey.collectAsState()
+                        val meals by viewModel.mealRepository.mealsForSelectedDate.collectAsState()
+                        val currentProfile by viewModel.profileRepository.profile.collectAsState()
+                        val targetCalories = remember(currentProfile, healthCaloriesResult) {
+                            if (currentProfile.syncHealthConnect && healthCaloriesResult != null && healthCaloriesResult!!.activeCaloriesBurned > 0) {
+                                de.carcophan.swock.domain.CalorieCalculator.calculateDynamicTarget(currentProfile, healthCaloriesResult!!.activeCaloriesBurned)
+                            } else {
+                                de.carcophan.swock.domain.CalorieCalculator.calculateDailyTarget(currentProfile)
+                            }
                         }
-                    )
+
+                        DashboardScreen(
+                            mealRepository = viewModel.mealRepository,
+                            profileRepository = viewModel.profileRepository,
+                            onCapturePhoto = { startCameraCapture() },
+                            onPickImage = { startGalleryPick() },
+                            onDescribeMeal = { text -> viewModel.processTextDescription(text) },
+                            healthCaloriesResult = healthCaloriesResult,
+                            onRefresh = {
+                                viewModel.mealRepository.refreshData()
+                                viewModel.refreshHealthConnect()
+                            },
+                            aiAdvice = viewModel.aiAdviceMap[selectedDateKey],
+                            isGeneratingAiAdvice = viewModel.isGeneratingAiAdvice,
+                            onRequestAiAdvice = {
+                                viewModel.requestAiNutritionAdvice(
+                                    dateKey = selectedDateKey,
+                                    meals = meals,
+                                    profile = currentProfile,
+                                    targetCalories = targetCalories,
+                                    activeCaloriesBurned = healthCaloriesResult?.activeCaloriesBurned ?: 0
+                                )
+                            }
+                        )
+                    }
                     Screen.HISTORY -> HistoryScreen(
                         mealRepository = viewModel.mealRepository,
                         profileRepository = viewModel.profileRepository,
@@ -356,6 +380,47 @@ fun MainAppScreen(
                     dismissButton = {
                         if (profile.geminiApiKey.isBlank()) {
                             TextButton(onClick = { viewModel.dismissError() }) {
+                                Text("Später")
+                            }
+                        }
+                    }
+                )
+            }
+
+            // AI Nutrition Advice Error Dialog
+            viewModel.aiAdviceErrorMessage?.let { errMsg ->
+                AlertDialog(
+                    onDismissRequest = { viewModel.dismissAiAdviceError() },
+                    icon = {
+                        Icon(
+                            imageVector = if (profile.geminiApiKey.isBlank()) Icons.Default.Key else Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    title = {
+                        Text(
+                            text = if (profile.geminiApiKey.isBlank()) "API-Schlüssel erforderlich" else "KI-Coach Beratung"
+                        )
+                    },
+                    text = { Text(errMsg) },
+                    confirmButton = {
+                        if (profile.geminiApiKey.isBlank()) {
+                            Button(onClick = {
+                                viewModel.dismissAiAdviceError()
+                                viewModel.currentScreen = Screen.SETTINGS
+                            }) {
+                                Text("Zu den Einstellungen")
+                            }
+                        } else {
+                            Button(onClick = { viewModel.dismissAiAdviceError() }) {
+                                Text("Verstanden")
+                            }
+                        }
+                    },
+                    dismissButton = {
+                        if (profile.geminiApiKey.isBlank()) {
+                            TextButton(onClick = { viewModel.dismissAiAdviceError() }) {
                                 Text("Später")
                             }
                         }

@@ -77,6 +77,8 @@ import de.carcophan.swock.data.health.HealthCaloriesResult
 import de.carcophan.swock.data.preferences.UserProfileRepository
 import de.carcophan.swock.data.repository.MealRepository
 import de.carcophan.swock.domain.CalorieCalculator
+import de.carcophan.swock.domain.NutritionAdvisor
+import de.carcophan.swock.model.DailyNutritionAdvice
 import de.carcophan.swock.model.FoodAnalysisResult
 import de.carcophan.swock.model.MealEntry
 import de.carcophan.swock.ui.common.HealthRatingBadge
@@ -109,6 +111,9 @@ fun DashboardScreen(
     onDescribeMeal: (String) -> Unit = {},
     healthCaloriesResult: HealthCaloriesResult? = null,
     onRefresh: () -> Unit = {},
+    aiAdvice: DailyNutritionAdvice? = null,
+    isGeneratingAiAdvice: Boolean = false,
+    onRequestAiAdvice: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -136,6 +141,11 @@ fun DashboardScreen(
     val calorieStatus = remember(totalConsumed, targetCalories) {
         CalorieCalculator.evaluateDay(totalConsumed, targetCalories)
     }
+
+    val localAdvice = remember(meals, profile, targetCalories) {
+        NutritionAdvisor.generateLocalAdvice(meals, profile, targetCalories)
+    }
+    val effectiveAdvice = aiAdvice ?: localAdvice
 
     val todayKey = remember { mealRepository.currentDateKey() }
     val isToday = selectedDateKey == todayKey
@@ -299,6 +309,15 @@ fun DashboardScreen(
             // 2b. Vitamin Overview Card
             item {
                 VitaminOverviewCard(meals = meals)
+            }
+
+            // 2c. Nutrition Advice Card
+            item {
+                NutritionAdviceCard(
+                    advice = effectiveAdvice,
+                    isGeneratingAi = isGeneratingAiAdvice,
+                    onRequestAiAdvice = onRequestAiAdvice
+                )
             }
 
             // 3. Section Header

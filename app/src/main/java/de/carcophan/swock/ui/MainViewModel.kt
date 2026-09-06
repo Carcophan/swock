@@ -3,9 +3,12 @@ package de.carcophan.swock.ui
 import android.app.Application
 import android.net.Uri
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
+import de.carcophan.swock.model.DailyNutritionAdvice
+import de.carcophan.swock.model.UserProfile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -261,9 +264,58 @@ class MainViewModel(
         viewModelScope.launch {
             mealRepository.saveMeal(meal)
             mealRepository.selectDate(meal.dateKey)
+            aiAdviceMap.remove(meal.dateKey)
             pendingAnalysisResult = null
             currentScreen = Screen.DASHBOARD
             onSaved()
         }
+    }
+
+    val aiAdviceMap = mutableStateMapOf<String, DailyNutritionAdvice>()
+
+    var isGeneratingAiAdvice by mutableStateOf(false)
+        private set
+
+    var aiAdviceErrorMessage by mutableStateOf<String?>(null)
+
+    fun requestAiNutritionAdvice(
+        dateKey: String,
+        meals: List<MealEntry>,
+        profile: UserProfile,
+        targetCalories: Int,
+        activeCaloriesBurned: Int = 0
+    ) {
+        viewModelScope.launch {
+            if (profile.geminiApiKey.isBlank()) {
+                aiAdviceErrorMessage = "Bitte hinterlege zuerst deinen kostenlosen Gemini API-Schlüssel in den Profileinstellungen."
+                return@launch
+            }
+
+            isGeneratingAiAdvice = true
+            aiAdviceErrorMessage = null
+
+            val result = geminiFoodService.generateDailyNutritionAdvice(
+                meals = meals,
+                profile = profile,
+                targetCalories = targetCalories,
+                activeCaloriesBurned = activeCaloriesBurned,
+                apiKey = profile.geminiApiKey,
+                preferredModel = profile.geminiModel
+            )
+
+            isGeneratingAiAdvice = false
+            result.fold(
+                onSuccess = { advice ->
+                    aiAdviceMap[dateKey] = advice
+                },
+                onFailure = { error ->
+                    aiAdviceErrorMessage = error.localizedMessage ?: "Fehler beim Abrufen der KI-Ernährungsempfehlungen."
+                }
+            )
+        }
+    }
+
+    fun dismissAiAdviceError() {
+        aiAdviceErrorMessage = null
     }
 }
