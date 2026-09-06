@@ -541,7 +541,7 @@ fun ConfirmFoodDialog(
                                 HealthTrafficLightMiniPill(activeRating = healthRating)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Ernährungs-Ampel",
+                                    text = "Lebensmittel-Ampel (A–F)",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold
                                 )

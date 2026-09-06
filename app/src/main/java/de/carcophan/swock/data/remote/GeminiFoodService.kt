@@ -123,10 +123,13 @@ class GeminiFoodService(private val context: Context) {
             Identifiziere das Nahrungsmittel oder Getränk, schätze oder berechne die Portionsgröße und ermittle möglichst genau die Kalorien (kcal) und die Makronährstoffe (Eiweiß, Kohlenhydrate, Fett).
             Falls mehrere Nahrungsmittel oder Getränke/Beilagen genannt werden, erfasse das gesamte Gericht bzw. die gesamte Mahlzeit kombiniert.
             
-            Bewerte außerdem die gesundheitliche Qualität (Ernährungs-Ampel) nach ernährungswissenschaftlichen Kriterien (Nutri-Score / Nährstoffdichte / Verarbeitungsgrad / Zucker & gesättigte Fette):
-            - "GREEN": Nährstoffreich, vollwertig, Gemüse, Obst, mageres Eiweiß, Wasser/ungesüßter Tee, wenig zugesetzter Zucker & schlechte Fette.
-            - "YELLOW": Ausgewogen bis durchschnittlich verarbeitet, normale Kohlenhydrat-/Fettträger (z. B. Nudeln, Reis, Brot, Mischkost), in Maßen vollkommen in Ordnung.
-            - "RED": Hohe Dichte an freiem Zucker, gesättigten Fettsäuren, Frittiertem, Fast Food, Softdrinks/Alkohol oder stark verarbeitet.
+            Bewerte außerdem die gesundheitliche Qualität (6-stufige Lebensmittel-Ampel von A bis F):
+            - "A": Sehr gesund (Grün) – Hohe Nährstoffdichte, vollwertig, unverarbeitet, frisches Gemüse, Obst, mageres Protein, Hülsenfrüchte, Wasser/ungesüßter Tee.
+            - "B": Gesund (Hellgrün) – Nährstoffreich mit wertvollen Fetten/Kohlenhydraten (z. B. Haferflocken, Nüsse, Vollkorn, Fisch, fettarme Milchprodukte).
+            - "C": Ausgewogen (Gelb) – Solide durchschnittliche Mischkost (z. B. Reis, Nudeln, Brot, Kartoffeln, normale Fleischgerichte), in Maßen gut.
+            - "D": Mäßig (Hellorange) – Höherer Kalorien-, Fett-, Salz- oder einfacher Kohlenhydratgehalt (z. B. Weißbrot, fetteres Fleisch, Fertigsaucen).
+            - "E": Ungesund (Orange) – Stark verarbeitet, frittiert, hoher Anteil an gesättigten Fetten oder zugesetztem Zucker (z. B. Burger, Pommes, Pizza, Kuchen).
+            - "F": Sehr ungesund (Rot) – Sehr hoher Gehalt an Industriezucker, Transfetten, Süßigkeiten, Chips, Softdrinks, Energy-Drinks, Alkohol oder hochgradig verarbeitetes Fast Food.
             
             Gib deine Antwort AUSSCHLIESSLICH im folgenden JSON-Format zurück:
             {
@@ -137,7 +140,7 @@ class GeminiFoodService(private val context: Context) {
               "fatGrams": 14.0,
               "portionDesc": "1 Portion, ca. 350g",
               "notes": "Zutaten oder kurze Anmerkung",
-              "healthRating": "GREEN",
+              "healthRating": "A",
               "healthReason": "Reich an Proteinen und Ballaststoffen, wenig Zucker",
               "category": "PASTA",
               "emoji": "🍝"
@@ -195,10 +198,13 @@ class GeminiFoodService(private val context: Context) {
             Identifiziere das Nahrungsmittel oder Getränk, schätze die Portionsgröße und ermittle möglichst genau die Kalorien (kcal) und die Makronährstoffe (Eiweiß, Kohlenhydrate, Fett).
             Falls mehrere Nahrungsmittel auf dem Bild sind, erfasse das gesamte Gericht/die gesamte Mahlzeit.
             
-            Bewerte außerdem die gesundheitliche Qualität (Ernährungs-Ampel) nach ernährungswissenschaftlichen Kriterien (Nutri-Score / Nährstoffdichte / Verarbeitungsgrad / Zucker & gesättigte Fette):
-            - "GREEN": Nährstoffreich, vollwertig, Gemüse, Obst, mageres Eiweiß, Wasser/ungesüßter Tee, wenig zugesetzter Zucker & schlechte Fette.
-            - "YELLOW": Ausgewogen bis durchschnittlich verarbeitet, normale Kohlenhydrat-/Fettträger (z. B. Nudeln, Reis, Brot, Mischkost), in Maßen vollkommen in Ordnung.
-            - "RED": Hohe Dichte an freiem Zucker, gesättigten Fettsäuren, Frittiertem, Fast Food, Softdrinks/Alkohol oder stark verarbeitet.
+            Bewerte außerdem die gesundheitliche Qualität (6-stufige Lebensmittel-Ampel von A bis F):
+            - "A": Sehr gesund (Grün) – Hohe Nährstoffdichte, vollwertig, unverarbeitet, frisches Gemüse, Obst, mageres Protein, Hülsenfrüchte, Wasser/ungesüßter Tee.
+            - "B": Gesund (Hellgrün) – Nährstoffreich mit wertvollen Fetten/Kohlenhydraten (z. B. Haferflocken, Nüsse, Vollkorn, Fisch, fettarme Milchprodukte).
+            - "C": Ausgewogen (Gelb) – Solide durchschnittliche Mischkost (z. B. Reis, Nudeln, Brot, Kartoffeln, normale Fleischgerichte), in Maßen gut.
+            - "D": Mäßig (Hellorange) – Höherer Kalorien-, Fett-, Salz- oder einfacher Kohlenhydratgehalt (z. B. Weißbrot, fetteres Fleisch, Fertigsaucen).
+            - "E": Ungesund (Orange) – Stark verarbeitet, frittiert, hoher Anteil an gesättigten Fetten oder zugesetztem Zucker (z. B. Burger, Pommes, Pizza, Kuchen).
+            - "F": Sehr ungesund (Rot) – Sehr hoher Gehalt an Industriezucker, Transfetten, Süßigkeiten, Chips, Softdrinks, Energy-Drinks, Alkohol oder hochgradig verarbeitetes Fast Food.
             
             Gib deine Antwort AUSSCHLIESSLICH im folgenden JSON-Format zurück:
             {
@@ -209,7 +215,7 @@ class GeminiFoodService(private val context: Context) {
               "fatGrams": 14.0,
               "portionDesc": "1 Portion, ca. 350g",
               "notes": "Zutaten oder kurze Anmerkung",
-              "healthRating": "GREEN",
+              "healthRating": "A",
               "healthReason": "Reich an Proteinen und Ballaststoffen, wenig Zucker"
             }
         """.trimIndent()
@@ -303,9 +309,12 @@ class GeminiFoodService(private val context: Context) {
         } else {
             // Heuristic fallback if not provided
             when {
-                calories > 750 && fatGrams > 35 -> HealthRating.RED
-                proteinGrams >= 20 && calories <= 500 -> HealthRating.GREEN
-                else -> HealthRating.YELLOW
+                calories > 800 && fatGrams > 40 -> HealthRating.F
+                calories > 650 && fatGrams > 30 -> HealthRating.E
+                calories > 550 || fatGrams > 22 -> HealthRating.D
+                proteinGrams >= 25 && calories <= 450 -> HealthRating.A
+                proteinGrams >= 15 && calories <= 550 -> HealthRating.B
+                else -> HealthRating.C
             }
         }
 

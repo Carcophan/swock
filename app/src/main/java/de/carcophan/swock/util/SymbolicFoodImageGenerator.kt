@@ -259,7 +259,7 @@ object SymbolicFoodImageGenerator {
         name: String,
         categoryHint: String = "",
         emojiHint: String = "",
-        healthRating: HealthRating = HealthRating.YELLOW
+        healthRating: HealthRating = HealthRating.C
     ): String = withContext(Dispatchers.IO) {
         generateSymbolicFoodImageSync(context, name, categoryHint, emojiHint, healthRating)
     }
@@ -269,7 +269,7 @@ object SymbolicFoodImageGenerator {
         name: String,
         categoryHint: String = "",
         emojiHint: String = "",
-        healthRating: HealthRating = HealthRating.YELLOW
+        healthRating: HealthRating = HealthRating.C
     ): String {
         val theme = resolveTheme(name, categoryHint, emojiHint)
         val size = 512

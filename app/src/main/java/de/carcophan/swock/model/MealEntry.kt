@@ -1,17 +1,23 @@
 package de.carcophan.swock.model
 
-enum class HealthRating(val label: String, val description: String) {
-    GREEN("Gesund", "Nährstoffreich & ausgewogen"),
-    YELLOW("Moderat", "In Maßen genießen"),
-    RED("Sparsam", "Hohe Kalorien- oder Zuckerdichte");
+enum class HealthRating(val grade: String, val label: String, val description: String) {
+    A("A", "Sehr gesund", "Nährstoffreich & vollwertig"),
+    B("B", "Gesund", "Gute Nährstoffqualität"),
+    C("C", "Ausgewogen", "Durchschnittlich, in Maßen gut"),
+    D("D", "Mäßig", "Erhöhter Fett-, Zucker- oder Salzgehalt"),
+    E("E", "Ungesund", "Stark verarbeitet / kalorienreich"),
+    F("F", "Sehr ungesund", "Sehr hoher Zucker-, Fett- oder Verarbeitungsgrad");
 
     companion object {
         fun fromString(value: String?): HealthRating {
             return when (value?.trim()?.uppercase()) {
-                "GREEN", "GRÜN", "GESUND" -> GREEN
-                "YELLOW", "GELB", "MODERAT", "AUSGEWOGEN" -> YELLOW
-                "RED", "ROT", "UNGESUND", "SPARSAM" -> RED
-                else -> YELLOW
+                "A", "GREEN", "GRÜN", "SEHR_GESUND", "SEHR GESUND" -> A
+                "B", "GUT" -> B
+                "C", "YELLOW", "GELB", "MODERAT", "AUSGEWOGEN" -> C
+                "D", "MÄSSIG", "MAESSIG" -> D
+                "E", "UNGESUND" -> E
+                "F", "RED", "ROT", "SEHR_UNGESUND", "SEHR UNGESUND", "SPARSAM" -> F
+                else -> C
             }
         }
     }
@@ -29,7 +35,7 @@ data class MealEntry(
     val timestamp: Long,
     val dateKey: String, // Format: yyyy-MM-dd
     val notes: String = "",
-    val healthRating: HealthRating = HealthRating.YELLOW,
+    val healthRating: HealthRating = HealthRating.C,
     val healthReason: String = ""
 )
 
@@ -41,7 +47,7 @@ data class FoodAnalysisResult(
     val fatGrams: Double,
     val portionDesc: String,
     val notes: String = "",
-    val healthRating: HealthRating = HealthRating.YELLOW,
+    val healthRating: HealthRating = HealthRating.C,
     val healthReason: String = "",
     val category: String = "",
     val emoji: String = ""

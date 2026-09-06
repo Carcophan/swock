@@ -45,7 +45,7 @@ class MealDatabaseHelper(context: Context) :
                 $COL_TIMESTAMP INTEGER NOT NULL,
                 $COL_DATE_KEY TEXT NOT NULL,
                 $COL_NOTES TEXT,
-                $COL_HEALTH_RATING TEXT DEFAULT 'YELLOW',
+                $COL_HEALTH_RATING TEXT DEFAULT 'C',
                 $COL_HEALTH_REASON TEXT DEFAULT ''
             )
         """.trimIndent()
@@ -55,7 +55,7 @@ class MealDatabaseHelper(context: Context) :
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
-            db.execSQL("ALTER TABLE $TABLE_MEALS ADD COLUMN $COL_HEALTH_RATING TEXT DEFAULT 'YELLOW'")
+            db.execSQL("ALTER TABLE $TABLE_MEALS ADD COLUMN $COL_HEALTH_RATING TEXT DEFAULT 'C'")
             db.execSQL("ALTER TABLE $TABLE_MEALS ADD COLUMN $COL_HEALTH_REASON TEXT DEFAULT ''")
         }
     }

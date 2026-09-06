@@ -40,30 +40,51 @@ object HealthRatingVisuals {
     val GreenBg = Color(0xFFDCFCE7)
     val GreenText = Color(0xFF15803D)
 
-    val YellowActive = Color(0xFFD97706)
-    val YellowBg = Color(0xFFFEF3C7)
-    val YellowText = Color(0xFFB45309)
+    val LimeActive = Color(0xFF65A30D)
+    val LimeBg = Color(0xFFECFCCB)
+    val LimeText = Color(0xFF3F6212)
+
+    val YellowActive = Color(0xFFCA8A04)
+    val YellowBg = Color(0xFFFEF9C3)
+    val YellowText = Color(0xFF854D0E)
+
+    val AmberActive = Color(0xFFD97706)
+    val AmberBg = Color(0xFFFEF3C7)
+    val AmberText = Color(0xFF92400E)
+
+    val OrangeActive = Color(0xFFEA580C)
+    val OrangeBg = Color(0xFFFFEDD5)
+    val OrangeText = Color(0xFF9A3412)
 
     val RedActive = Color(0xFFDC2626)
     val RedBg = Color(0xFFFEE2E2)
     val RedText = Color(0xFFB91C1C)
 
     fun getActiveColor(rating: HealthRating): Color = when (rating) {
-        HealthRating.GREEN -> GreenActive
-        HealthRating.YELLOW -> YellowActive
-        HealthRating.RED -> RedActive
+        HealthRating.A -> GreenActive
+        HealthRating.B -> LimeActive
+        HealthRating.C -> YellowActive
+        HealthRating.D -> AmberActive
+        HealthRating.E -> OrangeActive
+        HealthRating.F -> RedActive
     }
 
     fun getBgColor(rating: HealthRating): Color = when (rating) {
-        HealthRating.GREEN -> GreenBg
-        HealthRating.YELLOW -> YellowBg
-        HealthRating.RED -> RedBg
+        HealthRating.A -> GreenBg
+        HealthRating.B -> LimeBg
+        HealthRating.C -> YellowBg
+        HealthRating.D -> AmberBg
+        HealthRating.E -> OrangeBg
+        HealthRating.F -> RedBg
     }
 
     fun getTextColor(rating: HealthRating): Color = when (rating) {
-        HealthRating.GREEN -> GreenText
-        HealthRating.YELLOW -> YellowText
-        HealthRating.RED -> RedText
+        HealthRating.A -> GreenText
+        HealthRating.B -> LimeText
+        HealthRating.C -> YellowText
+        HealthRating.D -> AmberText
+        HealthRating.E -> OrangeText
+        HealthRating.F -> RedText
     }
 }
 
@@ -78,34 +99,20 @@ fun HealthTrafficLightMiniPill(
         modifier = modifier
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp),
-            horizontalArrangement = Arrangement.spacedBy(3.5.dp),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Green Dot
-            val isGreen = activeRating == HealthRating.GREEN
-            Box(
-                modifier = Modifier
-                    .size(if (isGreen) 8.dp else 6.dp)
-                    .clip(CircleShape)
-                    .background(if (isGreen) HealthRatingVisuals.GreenActive else HealthRatingVisuals.GreenActive.copy(alpha = 0.25f))
-            )
-            // Yellow Dot
-            val isYellow = activeRating == HealthRating.YELLOW
-            Box(
-                modifier = Modifier
-                    .size(if (isYellow) 8.dp else 6.dp)
-                    .clip(CircleShape)
-                    .background(if (isYellow) HealthRatingVisuals.YellowActive else HealthRatingVisuals.YellowActive.copy(alpha = 0.25f))
-            )
-            // Red Dot
-            val isRed = activeRating == HealthRating.RED
-            Box(
-                modifier = Modifier
-                    .size(if (isRed) 8.dp else 6.dp)
-                    .clip(CircleShape)
-                    .background(if (isRed) HealthRatingVisuals.RedActive else HealthRatingVisuals.RedActive.copy(alpha = 0.25f))
-            )
+            HealthRating.values().forEach { rating ->
+                val isActive = rating == activeRating
+                val color = HealthRatingVisuals.getActiveColor(rating)
+                Box(
+                    modifier = Modifier
+                        .size(if (isActive) 8.dp else 5.dp)
+                        .clip(CircleShape)
+                        .background(if (isActive) color else color.copy(alpha = 0.25f))
+                )
+            }
         }
     }
 }
@@ -118,7 +125,7 @@ fun HealthRatingBadge(
 ) {
     val bgColor = HealthRatingVisuals.getBgColor(rating)
     val textColor = HealthRatingVisuals.getTextColor(rating)
-    val dotColor = HealthRatingVisuals.getActiveColor(rating)
+    val activeColor = HealthRatingVisuals.getActiveColor(rating)
 
     Surface(
         shape = RoundedCornerShape(8.dp),
@@ -126,15 +133,23 @@ fun HealthRatingBadge(
         modifier = modifier
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(7.dp)
+                    .size(15.dp)
                     .clip(CircleShape)
-                    .background(dotColor)
-            )
+                    .background(activeColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = rating.grade,
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
             if (showLabel) {
                 Spacer(modifier = Modifier.width(4.5.dp))
                 Text(
@@ -154,64 +169,105 @@ fun HealthTrafficLightSelector(
     onRatingSelected: (HealthRating) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        HealthRating.values().forEach { rating ->
-            val isSelected = rating == selectedRating
-            val activeColor = HealthRatingVisuals.getActiveColor(rating)
-            val bgColor by animateColorAsState(
-                targetValue = if (isSelected) HealthRatingVisuals.getBgColor(rating) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                animationSpec = tween(200),
-                label = "bgColor"
-            )
-            val borderModifier = if (isSelected) {
-                Modifier.border(1.5.dp, activeColor, RoundedCornerShape(12.dp))
-            } else {
-                Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-            }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            HealthRating.values().forEach { rating ->
+                val isSelected = rating == selectedRating
+                val activeColor = HealthRatingVisuals.getActiveColor(rating)
+                val bgColor by animateColorAsState(
+                    targetValue = if (isSelected) activeColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                    animationSpec = tween(200),
+                    label = "bgColor"
+                )
+                val contentColor = if (isSelected) Color.White else activeColor
+                val borderModifier = if (isSelected) {
+                    Modifier.border(2.dp, activeColor, RoundedCornerShape(10.dp))
+                } else {
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                }
 
-            Surface(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .then(borderModifier)
-                    .clickable { onRatingSelected(rating) },
-                shape = RoundedCornerShape(12.dp),
-                color = bgColor
-            ) {
-                Column(
-                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(46.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .then(borderModifier)
+                        .clickable { onRatingSelected(rating) },
+                    shape = RoundedCornerShape(10.dp),
+                    color = bgColor
                 ) {
                     Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isSelected) activeColor else activeColor.copy(alpha = 0.35f)
-                            ),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(10.dp)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = rating.grade,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = contentColor,
+                                fontSize = 16.sp
                             )
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(4.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White)
+                                )
+                            }
                         }
                     }
+                }
+            }
+        }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
+        // Info strip explaining selected rating
+        val selectedActiveColor = HealthRatingVisuals.getActiveColor(selectedRating)
+        val selectedBgColor = HealthRatingVisuals.getBgColor(selectedRating)
+        val selectedTextColor = HealthRatingVisuals.getTextColor(selectedRating)
+
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = selectedBgColor,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .background(selectedActiveColor),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = rating.label,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) HealthRatingVisuals.getTextColor(rating) else MaterialTheme.colorScheme.onSurface,
-                        fontSize = 12.sp
+                        text = selectedRating.grade,
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "${selectedRating.label} (Stufe ${selectedRating.grade})",
+                        color = selectedTextColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = selectedRating.description,
+                        color = selectedTextColor.copy(alpha = 0.9f),
+                        fontSize = 11.sp
                     )
                 }
             }
@@ -258,7 +314,7 @@ fun HealthExplanationBox(
 
             Column {
                 Text(
-                    text = "Ampel-Bewertung: ${rating.label}",
+                    text = "Lebensmittel-Bewertung: Stufe ${rating.grade} (${rating.label})",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = textColor
