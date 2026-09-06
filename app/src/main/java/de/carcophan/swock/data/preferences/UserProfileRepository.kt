@@ -1,0 +1,85 @@
+package de.carcophan.swock.data.preferences
+
+import android.content.Context
+import de.carcophan.swock.model.ActivityLevel
+import de.carcophan.swock.model.CalorieGoal
+import de.carcophan.swock.model.Gender
+import de.carcophan.swock.model.UserProfile
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+class UserProfileRepository(context: Context) {
+
+    private val prefs = context.getSharedPreferences("swock_user_profile", Context.MODE_PRIVATE)
+
+    private val _profile = MutableStateFlow(loadProfile())
+    val profile: StateFlow<UserProfile> = _profile.asStateFlow()
+
+    private fun loadProfile(): UserProfile {
+        val age = prefs.getInt(KEY_AGE, 30)
+        val genderStr = prefs.getString(KEY_GENDER, Gender.MALE.name) ?: Gender.MALE.name
+        val gender = try {
+            Gender.valueOf(genderStr)
+        } catch (e: Exception) {
+            Gender.MALE
+        }
+
+        val height = prefs.getFloat(KEY_HEIGHT, 178f).toDouble()
+        val weight = prefs.getFloat(KEY_WEIGHT, 75f).toDouble()
+
+        val activityStr = prefs.getString(KEY_ACTIVITY, ActivityLevel.LIGHT.name) ?: ActivityLevel.LIGHT.name
+        val activity = try {
+            ActivityLevel.valueOf(activityStr)
+        } catch (e: Exception) {
+            ActivityLevel.LIGHT
+        }
+
+        val goalStr = prefs.getString(KEY_GOAL, CalorieGoal.MAINTAIN.name) ?: CalorieGoal.MAINTAIN.name
+        val goal = try {
+            CalorieGoal.valueOf(goalStr)
+        } catch (e: Exception) {
+            CalorieGoal.MAINTAIN
+        }
+
+        val apiKey = prefs.getString(KEY_GEMINI_KEY, "") ?: ""
+        val model = prefs.getString(KEY_GEMINI_MODEL, "gemini-3.6-flash") ?: "gemini-3.6-flash"
+
+        return UserProfile(
+            age = age,
+            gender = gender,
+            heightCm = height,
+            weightKg = weight,
+            activityLevel = activity,
+            calorieGoal = goal,
+            geminiApiKey = apiKey,
+            geminiModel = model
+        )
+    }
+
+    fun updateProfile(newProfile: UserProfile) {
+        prefs.edit()
+            .putInt(KEY_AGE, newProfile.age)
+            .putString(KEY_GENDER, newProfile.gender.name)
+            .putFloat(KEY_HEIGHT, newProfile.heightCm.toFloat())
+            .putFloat(KEY_WEIGHT, newProfile.weightKg.toFloat())
+            .putString(KEY_ACTIVITY, newProfile.activityLevel.name)
+            .putString(KEY_GOAL, newProfile.calorieGoal.name)
+            .putString(KEY_GEMINI_KEY, newProfile.geminiApiKey)
+            .putString(KEY_GEMINI_MODEL, newProfile.geminiModel)
+            .apply()
+
+        _profile.value = newProfile
+    }
+
+    companion object {
+        private const val KEY_AGE = "pref_age"
+        private const val KEY_GENDER = "pref_gender"
+        private const val KEY_HEIGHT = "pref_height"
+        private const val KEY_WEIGHT = "pref_weight"
+        private const val KEY_ACTIVITY = "pref_activity"
+        private const val KEY_GOAL = "pref_goal"
+        private const val KEY_GEMINI_KEY = "pref_gemini_key"
+        private const val KEY_GEMINI_MODEL = "pref_gemini_model"
+    }
+}
