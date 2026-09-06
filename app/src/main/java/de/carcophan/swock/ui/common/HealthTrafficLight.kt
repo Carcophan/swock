@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,7 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.carcophan.swock.model.HealthRating
@@ -147,7 +151,18 @@ fun HealthRatingBadge(
                     text = rating.grade,
                     color = Color.White,
                     fontSize = 9.sp,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 9.sp,
+                    style = LocalTextStyle.current.copy(
+                        platformStyle = PlatformTextStyle(
+                            includeFontPadding = false
+                        ),
+                        lineHeightStyle = LineHeightStyle(
+                            alignment = LineHeightStyle.Alignment.Center,
+                            trim = LineHeightStyle.Trim.Both
+                        )
+                    )
                 )
             }
             if (showLabel) {
@@ -253,7 +268,18 @@ fun HealthTrafficLightSelector(
                         text = selectedRating.grade,
                         color = Color.White,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.Black,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 11.sp,
+                        style = LocalTextStyle.current.copy(
+                            platformStyle = PlatformTextStyle(
+                                includeFontPadding = false
+                            ),
+                            lineHeightStyle = LineHeightStyle(
+                                alignment = LineHeightStyle.Alignment.Center,
+                                trim = LineHeightStyle.Trim.Both
+                            )
+                        )
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
