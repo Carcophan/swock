@@ -42,5 +42,7 @@ data class FoodAnalysisResult(
     val portionDesc: String,
     val notes: String = "",
     val healthRating: HealthRating = HealthRating.YELLOW,
-    val healthReason: String = ""
+    val healthReason: String = "",
+    val category: String = "",
+    val emoji: String = ""
 )

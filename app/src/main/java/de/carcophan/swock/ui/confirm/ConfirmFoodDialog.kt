@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EditNote
@@ -59,9 +60,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.sp
 import de.carcophan.swock.model.FoodAnalysisResult
 import de.carcophan.swock.model.HealthRating
 import de.carcophan.swock.model.MealEntry
+import de.carcophan.swock.util.SymbolicFoodImageGenerator
 import de.carcophan.swock.ui.common.HealthExplanationBox
 import de.carcophan.swock.ui.common.HealthRatingBadge
 import de.carcophan.swock.ui.common.HealthTrafficLightMiniPill
@@ -94,6 +100,7 @@ fun ConfirmFoodDialog(
     onDismiss: () -> Unit,
     onConfirm: (MealEntry) -> Unit
 ) {
+    val context = LocalContext.current
     var name by rememberSaveable { mutableStateOf(initialAnalysis.name) }
     var quantity by rememberSaveable { mutableStateOf(1.0) }
 
@@ -186,57 +193,86 @@ fun ConfirmFoodDialog(
 
                 // Image Preview or Text-based Meal Banner
                 if (bitmap != null) {
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "Aufgenommenes Essen",
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(180.dp)
-                            .clip(RoundedCornerShape(16.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+                            .clip(RoundedCornerShape(16.dp))
+                    ) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = if (imagePath.contains("symbolic")) "Symbolbild der Mahlzeit" else "Aufgenommenes Essen",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        if (imagePath.contains("symbolic")) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(12.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Symbolbild",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
                 } else {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+                    val theme = remember(name) {
+                        SymbolicFoodImageGenerator.resolveTheme(name, initialAnalysis.category, initialAnalysis.emoji)
+                    }
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(72.dp)
+                            .height(140.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(Color(theme.startColor), Color(theme.endColor))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Row(
+                        Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .size(64.dp)
+                                .background(Color.White.copy(alpha = 0.15f), CircleShape)
+                        )
+                        Text(
+                            text = theme.defaultEmoji,
+                            fontSize = 44.sp
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.Black.copy(alpha = 0.35f),
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 8.dp)
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.EditNote,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .padding(8.dp)
-                                        .size(24.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "Textuell beschriebene Mahlzeit",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                                Text(
-                                    text = "Werte durch Gemini analysiert",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Text(
+                                text = theme.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                            )
                         }
                     }
                 }
@@ -582,6 +618,22 @@ fun ConfirmFoodDialog(
                             val carbs = carbsText.replace(',', '.').toDoubleOrNull() ?: 0.0
                             val fat = fatText.replace(',', '.').toDoubleOrNull() ?: 0.0
 
+                            val finalImagePath = if (imagePath.isBlank() || !File(imagePath).exists()) {
+                                try {
+                                    SymbolicFoodImageGenerator.generateSymbolicFoodImageSync(
+                                        context = context,
+                                        name = name.ifBlank { "Unbekannte Mahlzeit" },
+                                        categoryHint = initialAnalysis.category,
+                                        emojiHint = initialAnalysis.emoji,
+                                        healthRating = healthRating
+                                    )
+                                } catch (e: Exception) {
+                                    imagePath
+                                }
+                            } else {
+                                imagePath
+                            }
+
                             val entry = MealEntry(
                                 id = existingMealId,
                                 name = name.ifBlank { "Unbekannte Mahlzeit" },
@@ -590,7 +642,7 @@ fun ConfirmFoodDialog(
                                 carbsGrams = carbs,
                                 fatGrams = fat,
                                 portionDesc = portionDesc.ifBlank { "1 Portion" },
-                                imagePath = imagePath,
+                                imagePath = finalImagePath,
                                 timestamp = currentTimestamp,
                                 dateKey = dateKey,
                                 notes = notes,

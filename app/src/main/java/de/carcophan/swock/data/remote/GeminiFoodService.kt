@@ -138,8 +138,12 @@ class GeminiFoodService(private val context: Context) {
               "portionDesc": "1 Portion, ca. 350g",
               "notes": "Zutaten oder kurze Anmerkung",
               "healthRating": "GREEN",
-              "healthReason": "Reich an Proteinen und Ballaststoffen, wenig Zucker"
+              "healthReason": "Reich an Proteinen und Ballaststoffen, wenig Zucker",
+              "category": "PASTA",
+              "emoji": "🍝"
             }
+            Wähle für "category" eine der folgenden Kategorien: PASTA, PIZZA, BURGER, SALAD, FRUIT, MEAT, FISH, BREAKFAST, EGG, BREAD, SOUP, ASIAN_RICE, DESSERT, ICE_CREAM, COFFEE, DRINK, DEFAULT.
+            Wähle für "emoji" genau ein passendes Food-Emoji (z. B. 🍝, 🍕, 🥗, ☕).
         """.trimIndent()
 
         val rootJson = JSONObject().apply {
@@ -305,6 +309,9 @@ class GeminiFoodService(private val context: Context) {
             }
         }
 
+        val category = foodJson.optString("category", "")
+        val emoji = foodJson.optString("emoji", "")
+
         return FoodAnalysisResult(
             name = name,
             calories = calories,
@@ -314,7 +321,9 @@ class GeminiFoodService(private val context: Context) {
             portionDesc = portionDesc,
             notes = notes,
             healthRating = healthRating,
-            healthReason = healthReason
+            healthReason = healthReason,
+            category = category,
+            emoji = emoji
         )
     }
 
@@ -385,6 +394,47 @@ class GeminiFoodService(private val context: Context) {
             original.recycle()
 
             Base64.encodeToString(bytes, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun generateAiFoodImage(
+        dishName: String,
+        apiKey: String
+    ): ByteArray? = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank()) return@withContext null
+        try {
+            val url = "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=$apiKey"
+            val prompt = "Stylized minimalist 3d icon of $dishName, isolated on clean pastel gradient background, vibrant appetizing colors, soft lighting, modern digital art style"
+            val rootJson = JSONObject().apply {
+                val instances = JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("prompt", prompt)
+                    })
+                }
+                put("instances", instances)
+                put("parameters", JSONObject().apply {
+                    put("sampleCount", 1)
+                    put("aspectRatio", "1:1")
+                })
+            }
+
+            val request = Request.Builder()
+                .url(url)
+                .post(rootJson.toString().toRequestBody(jsonMediaType))
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext null
+
+            val body = response.body?.string() ?: return@withContext null
+            val root = JSONObject(body)
+            val predictions = root.optJSONArray("predictions") ?: return@withContext null
+            if (predictions.length() == 0) return@withContext null
+            val b64 = predictions.getJSONObject(0).optString("bytesBase64Encoded", "")
+            if (b64.isBlank()) return@withContext null
+            Base64.decode(b64, Base64.DEFAULT)
         } catch (e: Exception) {
             null
         }

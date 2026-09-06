@@ -27,6 +27,8 @@ import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.UUID
+import de.carcophan.swock.util.SymbolicFoodImageGenerator
 
 class MainViewModel(
     application: Application,
@@ -194,18 +196,38 @@ class MainViewModel(
                     preferredModel = profile.geminiModel
                 )
 
-                isAnalyzing = false
-                result.fold(
-                    onSuccess = { analysis ->
-                        pendingAnalysisResult = Pair("", analysis)
-                    },
-                    onFailure = { error ->
-                        analysisErrorMessage = error.localizedMessage ?: "Fehler bei der Textanalyse durch Gemini."
+                val analysisResult = result.getOrThrow()
+                
+                // Try generating symbolic image: attempt AI image if available, else local symbolic generator
+                var symbolicImagePath = ""
+                try {
+                    val aiBytes = geminiFoodService.generateAiFoodImage(analysisResult.name, profile.geminiApiKey)
+                    if (aiBytes != null) {
+                        val context = getApplication<Application>()
+                        val imagesDir = File(context.filesDir, "food_images").apply { mkdirs() }
+                        val file = File(imagesDir, "symbolic_ai_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(6)}.png")
+                        file.writeBytes(aiBytes)
+                        symbolicImagePath = file.absolutePath
                     }
-                )
+                } catch (e: Exception) {
+                    // Fall back to local generator
+                }
+
+                if (symbolicImagePath.isBlank()) {
+                    symbolicImagePath = SymbolicFoodImageGenerator.generateSymbolicFoodImage(
+                        context = getApplication(),
+                        name = analysisResult.name,
+                        categoryHint = analysisResult.category,
+                        emojiHint = analysisResult.emoji,
+                        healthRating = analysisResult.healthRating
+                    )
+                }
+
+                isAnalyzing = false
+                pendingAnalysisResult = Pair(symbolicImagePath, analysisResult)
             } catch (e: Exception) {
                 isAnalyzing = false
-                analysisErrorMessage = "Fehler bei der Analyse: ${e.localizedMessage}"
+                analysisErrorMessage = e.localizedMessage ?: "Fehler bei der Analyse der Mahlzeit."
             }
         }
     }

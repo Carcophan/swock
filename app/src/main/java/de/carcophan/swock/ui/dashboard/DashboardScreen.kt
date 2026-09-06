@@ -58,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -73,6 +74,7 @@ import de.carcophan.swock.model.FoodAnalysisResult
 import de.carcophan.swock.model.MealEntry
 import de.carcophan.swock.ui.common.HealthRatingBadge
 import de.carcophan.swock.ui.confirm.ConfirmFoodDialog
+import de.carcophan.swock.util.SymbolicFoodImageGenerator
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -700,17 +702,28 @@ fun MealItemCard(
                     contentScale = ContentScale.Crop
                 )
             } else {
+                val theme = remember(meal.name) {
+                    SymbolicFoodImageGenerator.resolveTheme(meal.name)
+                }
                 Box(
                     modifier = Modifier
                         .size(76.dp)
-                        .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(theme.startColor), Color(theme.endColor))
+                            )
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Fastfood,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(36.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(Color.White.copy(alpha = 0.18f), CircleShape)
+                    )
+                    Text(
+                        text = theme.defaultEmoji,
+                        fontSize = 28.sp
                     )
                 }
             }
