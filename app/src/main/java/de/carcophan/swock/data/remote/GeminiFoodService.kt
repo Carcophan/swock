@@ -59,8 +59,8 @@ class GeminiFoodService(private val context: Context) {
                 IllegalStateException("Konnte das Bild nicht für die Analyse vorbereiten.")
             )
 
-        // Try preferredModel (gemini-3.6-flash) first, fallback to gemini-2.5-flash / 1.5-flash
-        val candidateModels = listOf("gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash")
+        // Use preferredModel (gemini-3.6-flash)
+        val candidateModels = listOf("gemini-3.6-flash")
         val modelsToTry = (listOf(preferredModel) + candidateModels).distinct()
         var lastError: Exception? = null
 
@@ -99,7 +99,7 @@ class GeminiFoodService(private val context: Context) {
             )
         }
 
-        val candidateModels = listOf("gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash")
+        val candidateModels = listOf("gemini-3.6-flash")
         val modelsToTry = (listOf(preferredModel) + candidateModels).distinct()
         var lastError: Exception? = null
 
@@ -562,7 +562,7 @@ class GeminiFoodService(private val context: Context) {
             }
         """.trimIndent()
 
-        val candidateModels = listOf("gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash")
+        val candidateModels = listOf("gemini-3.6-flash")
         val modelsToTry = (listOf(preferredModel) + candidateModels).distinct()
         var lastError: Exception? = null
 

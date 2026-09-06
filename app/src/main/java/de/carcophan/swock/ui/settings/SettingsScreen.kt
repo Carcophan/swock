@@ -128,7 +128,12 @@ fun SettingsScreen(
     var activityLevel by remember(currentProfile) { mutableStateOf(currentProfile.activityLevel) }
     var calorieGoal by remember(currentProfile) { mutableStateOf(currentProfile.calorieGoal) }
     var geminiApiKey by remember(currentProfile) { mutableStateOf(currentProfile.geminiApiKey) }
-    var geminiModel by remember(currentProfile) { mutableStateOf(currentProfile.geminiModel) }
+    var geminiModel by remember(currentProfile) {
+        mutableStateOf(
+            if (currentProfile.geminiModel in listOf("gemini-2.5-flash", "gemini-1.5-flash")) "gemini-3.6-flash"
+            else currentProfile.geminiModel
+        )
+    }
     var syncHealthConnect by remember(currentProfile) { mutableStateOf(currentProfile.syncHealthConnect) }
 
     var autoBackupEnabled by remember(currentProfile) { mutableStateOf(currentProfile.autoBackupEnabled) }
@@ -673,7 +678,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf("gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash").forEach { modelOption ->
+                    listOf("gemini-3.6-flash").forEach { modelOption ->
                         FilterChip(
                             selected = geminiModel == modelOption,
                             onClick = {
@@ -682,7 +687,7 @@ fun SettingsScreen(
                             },
                             label = {
                                 Text(
-                                    text = if (modelOption == "gemini-3.6-flash") "3.6 Flash (Neu)" else modelOption.removePrefix("gemini-"),
+                                    text = "3.6 Flash",
                                     style = MaterialTheme.typography.labelSmall
                                 )
                             }
