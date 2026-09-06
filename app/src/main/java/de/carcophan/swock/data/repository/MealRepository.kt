@@ -3,6 +3,8 @@ package de.carcophan.swock.data.repository
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import de.carcophan.swock.data.local.MealDatabaseHelper
 import de.carcophan.swock.model.MealEntry
@@ -97,6 +99,15 @@ class MealRepository(private val context: Context) {
 
         val destination = File(imagesDir, "food_${System.currentTimeMillis()}.jpg")
 
+        val orientation = try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val exif = ExifInterface(input)
+                exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+            } ?: ExifInterface.ORIENTATION_NORMAL
+        } catch (e: Exception) {
+            ExifInterface.ORIENTATION_NORMAL
+        }
+
         context.contentResolver.openInputStream(uri)?.use { input ->
             val original = BitmapFactory.decodeStream(input)
             if (original != null) {
@@ -114,8 +125,26 @@ class MealRepository(private val context: Context) {
                     original
                 }
 
+                // Correct EXIF orientation so portrait photos stay upright
+                val rotated = if (orientation != ExifInterface.ORIENTATION_NORMAL && orientation != ExifInterface.ORIENTATION_UNDEFINED) {
+                    val matrix = Matrix()
+                    when (orientation) {
+                        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                        ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+                        ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+                    }
+                    Bitmap.createBitmap(scaled, 0, 0, scaled.width, scaled.height, matrix, true)
+                } else {
+                    scaled
+                }
+
                 FileOutputStream(destination).use { out ->
-                    scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                    rotated.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                }
+                if (rotated != scaled && rotated != original) {
+                    rotated.recycle()
                 }
                 if (scaled != original) {
                     scaled.recycle()
