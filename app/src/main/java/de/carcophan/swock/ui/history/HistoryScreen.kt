@@ -199,13 +199,13 @@ fun HistoryDayCard(
     difference: Int,
     onClick: () -> Unit
 ) {
-    val badgeColor = if (isOver) Color(0xFFE53935) else Color(0xFF2E7D32)
-    val badgeBg = if (isOver) Color(0xFFFFEBEE) else Color(0xFFE8F5E9)
+    val badgeColor = if (isOver) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    val badgeBg = if (isOver) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
 
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }

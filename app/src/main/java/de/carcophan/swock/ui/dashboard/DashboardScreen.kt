@@ -2,6 +2,10 @@ package de.carcophan.swock.ui.dashboard
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -60,8 +65,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,6 +81,9 @@ import de.carcophan.swock.model.FoodAnalysisResult
 import de.carcophan.swock.model.MealEntry
 import de.carcophan.swock.ui.common.HealthRatingBadge
 import de.carcophan.swock.ui.confirm.ConfirmFoodDialog
+import de.carcophan.swock.ui.theme.MacroCarbs
+import de.carcophan.swock.ui.theme.MacroFat
+import de.carcophan.swock.ui.theme.MacroProtein
 import de.carcophan.swock.util.SymbolicFoodImageGenerator
 import java.io.File
 import java.text.SimpleDateFormat
@@ -102,6 +112,7 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val selectedDateKey by mealRepository.selectedDateKey.collectAsState()
     val meals by mealRepository.mealsForSelectedDate.collectAsState()
@@ -153,6 +164,7 @@ fun DashboardScreen(
     var showDescribeDialog by rememberSaveable { mutableStateOf(false) }
 
     fun changeDay(offset: Int) {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         try {
             val date = keyFormat.parse(selectedDateKey) ?: Date()
             val cal = Calendar.getInstance().apply {
@@ -167,6 +179,7 @@ fun DashboardScreen(
     }
 
     fun openDatePicker() {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         val cal = Calendar.getInstance()
         try {
             val parsed = keyFormat.parse(selectedDateKey)
@@ -213,56 +226,59 @@ fun DashboardScreen(
                 // 1. Date Navigation Bar
                 item {
                     Card(
-                        shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 6.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                     ) {
-                        IconButton(onClick = { changeDay(-1) }) {
-                            Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Tag")
-                        }
-
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { openDatePicker() }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .fillMaxWidth()
+                                .padding(horizontal = 6.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Icon(
-                                Icons.Default.CalendarMonth,
-                                contentDescription = "Datum wählen",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = formattedDisplayDate,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (!isToday) {
-                                TextButton(
-                                    onClick = { mealRepository.selectDate(todayKey) },
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                                ) {
-                                    Text("Heute", style = MaterialTheme.typography.labelMedium)
-                                }
+                            IconButton(onClick = { changeDay(-1) }) {
+                                Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Tag")
                             }
-                            IconButton(onClick = { changeDay(1) }) {
-                                Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Tag")
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { openDatePicker() }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.CalendarMonth,
+                                    contentDescription = "Datum wählen",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = formattedDisplayDate,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (!isToday) {
+                                    TextButton(
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            mealRepository.selectDate(todayKey)
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                    ) {
+                                        Text("Heute", style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                                IconButton(onClick = { changeDay(1) }) {
+                                    Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Tag")
+                                }
                             }
                         }
                     }
-                }
             }
 
             // 2. Calorie Overview Card
@@ -368,7 +384,10 @@ fun DashboardScreen(
             }
 
             FloatingActionButton(
-                onClick = { showFabMenu = !showFabMenu },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showFabMenu = !showFabMenu
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = CircleShape
@@ -462,13 +481,25 @@ fun CalorieOverviewCard(
     fat: Double,
     healthCaloriesResult: HealthCaloriesResult? = null
 ) {
+    val targetRatio = if (target > 0) (consumed.toFloat() / target.toFloat()).coerceIn(0f, 1f) else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = targetRatio,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "CalorieProgress"
+    )
+    val animatedConsumed by animateIntAsState(
+        targetValue = consumed,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow),
+        label = "ConsumedCalories"
+    )
+
     Card(
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -482,7 +513,7 @@ fun CalorieOverviewCard(
                     )
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
-                            text = "$consumed",
+                            text = "$animatedConsumed",
                             style = MaterialTheme.typography.displaySmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -498,11 +529,11 @@ fun CalorieOverviewCard(
 
                 // Over / Under Badge
                 val isOver = status.isOverBudget
-                val badgeColor = if (isOver) Color(0xFFE53935) else Color(0xFF2E7D32)
-                val badgeBg = if (isOver) Color(0xFFFFEBEE) else Color(0xFFE8F5E9)
+                val badgeColor = if (isOver) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                val badgeBg = if (isOver) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
 
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     color = badgeBg,
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
@@ -531,20 +562,19 @@ fun CalorieOverviewCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Progress Bar
-            val progress = (status.percentage).coerceIn(0f, 1f)
+            // Animated Progress Bar
             val progressColor = if (status.isOverBudget) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
 
             LinearProgressIndicator(
-                progress = { progress },
+                progress = { animatedProgress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(10.dp)
-                    .clip(RoundedCornerShape(5.dp)),
+                    .height(12.dp)
+                    .clip(CircleShape),
                 color = progressColor,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -567,14 +597,14 @@ fun CalorieOverviewCard(
 
             healthCaloriesResult?.let { health ->
                 if (health.totalCaloriesBurned > 0 || health.activeCaloriesBurned > 0) {
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -621,22 +651,45 @@ fun CalorieOverviewCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Macronutrient Breakdown
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .padding(vertical = 10.dp, horizontal = 12.dp),
-                horizontalArrangement = Arrangement.SpaceAround
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                MacroStatItem(name = "Eiweiß", grams = protein, color = Color(0xFF1E88E5))
-                MacroStatItem(name = "Kohlenhydrate", grams = carbs, color = Color(0xFFFB8C00))
-                MacroStatItem(name = "Fett", grams = fat, color = Color(0xFFE53935))
+                Column(modifier = Modifier.padding(14.dp)) {
+                    // Mini proportional distribution bar
+                    val totalGrams = (protein + carbs + fat).toFloat()
+                    if (totalGrams > 0f) {
+                        val proteinWeight = (protein.toFloat() / totalGrams).coerceAtLeast(0.05f)
+                        val carbsWeight = (carbs.toFloat() / totalGrams).coerceAtLeast(0.05f)
+                        val fatWeight = (fat.toFloat() / totalGrams).coerceAtLeast(0.05f)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(CircleShape)
+                        ) {
+                            Box(modifier = Modifier.weight(proteinWeight).fillMaxHeight().background(MacroProtein))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Box(modifier = Modifier.weight(carbsWeight).fillMaxHeight().background(MacroCarbs))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Box(modifier = Modifier.weight(fatWeight).fillMaxHeight().background(MacroFat))
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        MacroStatItem(name = "Eiweiß", grams = protein, color = MacroProtein)
+                        MacroStatItem(name = "Kohlenhydrate", grams = carbs, color = MacroCarbs)
+                        MacroStatItem(name = "Fett", grams = fat, color = MacroFat)
+                    }
+                }
             }
         }
     }
@@ -677,9 +730,9 @@ fun MealItemCard(
     val formattedTime = remember(meal.timestamp) { timeFormat.format(Date(meal.timestamp)) }
 
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }

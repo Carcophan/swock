@@ -11,7 +11,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,7 +67,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -106,6 +116,7 @@ fun MainAppScreen(
     viewModel: MainViewModel
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val profile by viewModel.profileRepository.profile.collectAsState()
     val healthCaloriesResult by viewModel.healthCaloriesForSelectedDate.collectAsState()
     val isHealthConnectAuthorized by viewModel.isHealthConnectAuthorized.collectAsState()
@@ -180,11 +191,19 @@ fun MainAppScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar {
-                Screen.values().forEach { screen ->
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                tonalElevation = 3.dp
+            ) {
+                Screen.entries.forEach { screen ->
                     NavigationBarItem(
                         selected = viewModel.currentScreen == screen,
-                        onClick = { viewModel.currentScreen = screen },
+                        onClick = {
+                            if (viewModel.currentScreen != screen) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.currentScreen = screen
+                            }
+                        },
                         icon = { Icon(screen.icon, contentDescription = screen.title) },
                         label = { Text(screen.title) }
                     )
@@ -197,38 +216,67 @@ fun MainAppScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            when (viewModel.currentScreen) {
-                Screen.DASHBOARD -> DashboardScreen(
-                    mealRepository = viewModel.mealRepository,
-                    profileRepository = viewModel.profileRepository,
-                    onCapturePhoto = { startCameraCapture() },
-                    onPickImage = { startGalleryPick() },
-                    onDescribeMeal = { text -> viewModel.processTextDescription(text) },
-                    healthCaloriesResult = healthCaloriesResult,
-                    onRefresh = {
-                        viewModel.mealRepository.refreshData()
-                        viewModel.refreshHealthConnect()
+            AnimatedContent(
+                targetState = viewModel.currentScreen,
+                transitionSpec = {
+                    if (targetState.ordinal > initialState.ordinal) {
+                        (slideInHorizontally(
+                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                            initialOffsetX = { fullWidth -> (fullWidth * 0.35f).toInt() }
+                        ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))).togetherWith(
+                            slideOutHorizontally(
+                                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                targetOffsetX = { fullWidth -> (-fullWidth * 0.35f).toInt() }
+                            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+                        )
+                    } else {
+                        (slideInHorizontally(
+                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                            initialOffsetX = { fullWidth -> (-fullWidth * 0.35f).toInt() }
+                        ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))).togetherWith(
+                            slideOutHorizontally(
+                                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                targetOffsetX = { fullWidth -> (fullWidth * 0.35f).toInt() }
+                            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+                        )
                     }
-                )
-                Screen.HISTORY -> HistoryScreen(
-                    mealRepository = viewModel.mealRepository,
-                    profileRepository = viewModel.profileRepository,
-                    onSelectDayAndNavigateToDashboard = { dateKey ->
-                        viewModel.mealRepository.selectDate(dateKey)
-                        viewModel.currentScreen = Screen.DASHBOARD
-                    }
-                )
-                Screen.SETTINGS -> SettingsScreen(
-                    profileRepository = viewModel.profileRepository,
-                    geminiFoodService = viewModel.geminiFoodService,
-                    healthConnectManager = viewModel.healthConnectManager,
-                    isHealthConnectAuthorized = isHealthConnectAuthorized,
-                    onRefreshHealthConnect = { viewModel.refreshHealthConnect() },
-                    backupManager = viewModel.backupManager,
-                    googleDriveAuthManager = viewModel.googleDriveAuthManager,
-                    googleDriveService = viewModel.googleDriveService,
-                    onDataRestored = { viewModel.mealRepository.refreshData() }
-                )
+                },
+                label = "ScreenTransition",
+                modifier = Modifier.fillMaxSize()
+            ) { targetScreen ->
+                when (targetScreen) {
+                    Screen.DASHBOARD -> DashboardScreen(
+                        mealRepository = viewModel.mealRepository,
+                        profileRepository = viewModel.profileRepository,
+                        onCapturePhoto = { startCameraCapture() },
+                        onPickImage = { startGalleryPick() },
+                        onDescribeMeal = { text -> viewModel.processTextDescription(text) },
+                        healthCaloriesResult = healthCaloriesResult,
+                        onRefresh = {
+                            viewModel.mealRepository.refreshData()
+                            viewModel.refreshHealthConnect()
+                        }
+                    )
+                    Screen.HISTORY -> HistoryScreen(
+                        mealRepository = viewModel.mealRepository,
+                        profileRepository = viewModel.profileRepository,
+                        onSelectDayAndNavigateToDashboard = { dateKey ->
+                            viewModel.mealRepository.selectDate(dateKey)
+                            viewModel.currentScreen = Screen.DASHBOARD
+                        }
+                    )
+                    Screen.SETTINGS -> SettingsScreen(
+                        profileRepository = viewModel.profileRepository,
+                        geminiFoodService = viewModel.geminiFoodService,
+                        healthConnectManager = viewModel.healthConnectManager,
+                        isHealthConnectAuthorized = isHealthConnectAuthorized,
+                        onRefreshHealthConnect = { viewModel.refreshHealthConnect() },
+                        backupManager = viewModel.backupManager,
+                        googleDriveAuthManager = viewModel.googleDriveAuthManager,
+                        googleDriveService = viewModel.googleDriveService,
+                        onDataRestored = { viewModel.mealRepository.refreshData() }
+                    )
+                }
             }
 
             // Loading Dialog during Gemini Analysis
