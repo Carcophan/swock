@@ -87,4 +87,21 @@ class CalorieCalculatorTest {
         assertEquals(-350, status.difference)
         assertTrue(status.percentage > 1.0f)
     }
+
+    @Test
+    fun testDynamicTarget_withHealthConnectActiveCalories() {
+        val profile = UserProfile(
+            age = 30,
+            gender = Gender.MALE,
+            heightCm = 180.0,
+            weightKg = 75.0,
+            activityLevel = ActivityLevel.LIGHT,
+            calorieGoal = CalorieGoal.DEFICIT_STANDARD
+        )
+        val baseTarget = CalorieCalculator.calculateDailyTarget(profile) // 1879
+        val activeCaloriesBurned = 450
+
+        val dynamicTarget = CalorieCalculator.calculateDynamicTarget(profile, activeCaloriesBurned)
+        assertEquals(baseTarget + 450, dynamicTarget)
+    }
 }

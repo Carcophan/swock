@@ -29,5 +29,6 @@ data class UserProfile(
     val activityLevel: ActivityLevel = ActivityLevel.LIGHT,
     val calorieGoal: CalorieGoal = CalorieGoal.MAINTAIN,
     val geminiApiKey: String = "",
-    val geminiModel: String = "gemini-3.6-flash"
+    val geminiModel: String = "gemini-3.6-flash",
+    val syncHealthConnect: Boolean = false
 )

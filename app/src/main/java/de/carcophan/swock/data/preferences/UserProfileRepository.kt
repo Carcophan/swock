@@ -44,6 +44,7 @@ class UserProfileRepository(context: Context) {
 
         val apiKey = prefs.getString(KEY_GEMINI_KEY, "") ?: ""
         val model = prefs.getString(KEY_GEMINI_MODEL, "gemini-3.6-flash") ?: "gemini-3.6-flash"
+        val syncHealthConnect = prefs.getBoolean(KEY_HEALTH_CONNECT, false)
 
         return UserProfile(
             age = age,
@@ -53,7 +54,8 @@ class UserProfileRepository(context: Context) {
             activityLevel = activity,
             calorieGoal = goal,
             geminiApiKey = apiKey,
-            geminiModel = model
+            geminiModel = model,
+            syncHealthConnect = syncHealthConnect
         )
     }
 
@@ -67,6 +69,7 @@ class UserProfileRepository(context: Context) {
             .putString(KEY_GOAL, newProfile.calorieGoal.name)
             .putString(KEY_GEMINI_KEY, newProfile.geminiApiKey)
             .putString(KEY_GEMINI_MODEL, newProfile.geminiModel)
+            .putBoolean(KEY_HEALTH_CONNECT, newProfile.syncHealthConnect)
             .apply()
 
         _profile.value = newProfile
@@ -81,5 +84,6 @@ class UserProfileRepository(context: Context) {
         private const val KEY_GOAL = "pref_goal"
         private const val KEY_GEMINI_KEY = "pref_gemini_key"
         private const val KEY_GEMINI_MODEL = "pref_gemini_model"
+        private const val KEY_HEALTH_CONNECT = "pref_health_connect"
     }
 }

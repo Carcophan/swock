@@ -44,12 +44,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -102,6 +107,29 @@ fun MainAppScreen(
 ) {
     val context = LocalContext.current
     val profile by viewModel.profileRepository.profile.collectAsState()
+    val healthCaloriesResult by viewModel.healthCaloriesForSelectedDate.collectAsState()
+    val isHealthConnectAuthorized by viewModel.isHealthConnectAuthorized.collectAsState()
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.mealRepository.refreshData()
+                viewModel.refreshHealthConnect()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(viewModel.currentScreen) {
+        if (viewModel.currentScreen == Screen.DASHBOARD) {
+            viewModel.mealRepository.refreshData()
+            viewModel.refreshHealthConnect()
+        }
+    }
 
     val isAnalyzing = viewModel.isAnalyzing
     val analysisErrorMessage = viewModel.analysisErrorMessage
@@ -175,7 +203,12 @@ fun MainAppScreen(
                     profileRepository = viewModel.profileRepository,
                     onCapturePhoto = { startCameraCapture() },
                     onPickImage = { startGalleryPick() },
-                    onDescribeMeal = { text -> viewModel.processTextDescription(text) }
+                    onDescribeMeal = { text -> viewModel.processTextDescription(text) },
+                    healthCaloriesResult = healthCaloriesResult,
+                    onRefresh = {
+                        viewModel.mealRepository.refreshData()
+                        viewModel.refreshHealthConnect()
+                    }
                 )
                 Screen.HISTORY -> HistoryScreen(
                     mealRepository = viewModel.mealRepository,
@@ -187,7 +220,10 @@ fun MainAppScreen(
                 )
                 Screen.SETTINGS -> SettingsScreen(
                     profileRepository = viewModel.profileRepository,
-                    geminiFoodService = viewModel.geminiFoodService
+                    geminiFoodService = viewModel.geminiFoodService,
+                    healthConnectManager = viewModel.healthConnectManager,
+                    isHealthConnectAuthorized = isHealthConnectAuthorized,
+                    onRefreshHealthConnect = { viewModel.refreshHealthConnect() }
                 )
             }
 

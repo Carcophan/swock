@@ -37,6 +37,15 @@ object CalorieCalculator {
         return target.coerceAtLeast(800)
     }
 
+    /**
+     * Calculates dynamic daily calorie target:
+     * Base target + active calories burned from Health Connect (tracker/smartwatch).
+     */
+    fun calculateDynamicTarget(profile: UserProfile, activeBurnedCalories: Int): Int {
+        val baseTarget = calculateDailyTarget(profile)
+        return (baseTarget + activeBurnedCalories.coerceAtLeast(0)).coerceAtLeast(800)
+    }
+
     data class CalorieStatus(
         val consumed: Int,
         val target: Int,

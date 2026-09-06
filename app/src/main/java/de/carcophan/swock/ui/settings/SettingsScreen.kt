@@ -60,6 +60,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.health.connect.client.PermissionController
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.Switch
+import androidx.compose.ui.graphics.Color
+import de.carcophan.swock.data.health.HealthConnectManager
 import de.carcophan.swock.data.preferences.UserProfileRepository
 import de.carcophan.swock.data.remote.GeminiFoodService
 import de.carcophan.swock.domain.CalorieCalculator
@@ -74,6 +81,9 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     profileRepository: UserProfileRepository,
     geminiFoodService: GeminiFoodService,
+    healthConnectManager: HealthConnectManager? = null,
+    isHealthConnectAuthorized: Boolean = false,
+    onRefreshHealthConnect: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -88,6 +98,13 @@ fun SettingsScreen(
     var calorieGoal by remember(currentProfile) { mutableStateOf(currentProfile.calorieGoal) }
     var geminiApiKey by remember(currentProfile) { mutableStateOf(currentProfile.geminiApiKey) }
     var geminiModel by remember(currentProfile) { mutableStateOf(currentProfile.geminiModel) }
+    var syncHealthConnect by remember(currentProfile) { mutableStateOf(currentProfile.syncHealthConnect) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = PermissionController.createRequestPermissionResultContract()
+    ) { grantedPermissions ->
+        onRefreshHealthConnect()
+    }
 
     var isApiKeyVisible by remember { mutableStateOf(false) }
     var isTestingKey by remember { mutableStateOf(false) }
@@ -97,7 +114,7 @@ fun SettingsScreen(
     var goalDropdownExpanded by remember { mutableStateOf(false) }
 
     // Live computed preview
-    val previewProfile = remember(ageText, gender, heightText, weightText, activityLevel, calorieGoal, geminiApiKey, geminiModel) {
+    val previewProfile = remember(ageText, gender, heightText, weightText, activityLevel, calorieGoal, geminiApiKey, geminiModel, syncHealthConnect) {
         val age = ageText.toIntOrNull() ?: 30
         val height = heightText.replace(',', '.').toDoubleOrNull() ?: 178.0
         val weight = weightText.replace(',', '.').toDoubleOrNull() ?: 75.0
@@ -109,7 +126,8 @@ fun SettingsScreen(
             activityLevel = activityLevel,
             calorieGoal = calorieGoal,
             geminiApiKey = geminiApiKey.trim(),
-            geminiModel = geminiModel
+            geminiModel = geminiModel,
+            syncHealthConnect = syncHealthConnect
         )
     }
 
@@ -385,7 +403,135 @@ fun SettingsScreen(
             }
         }
 
-        // 3. Gemini API Key Card
+        // 3. Health Connect / Google Fit Card
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Google Fit & Tracker",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Health Connect Synchronisierung",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = syncHealthConnect,
+                        onCheckedChange = { checked ->
+                            syncHealthConnect = checked
+                            if (checked && healthConnectManager != null && !isHealthConnectAuthorized) {
+                                permissionLauncher.launch(healthConnectManager.permissions)
+                            }
+                        }
+                    )
+                }
+
+                Text(
+                    text = "Liest deinen tatsächlichen täglichen Kalorienverbrauch (Grundumsatz & Aktivität) direkt aus Google Fit, Pixel Watch, Samsung Health, Garmin etc. aus.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 8.dp)
+                )
+
+                if (syncHealthConnect) {
+                    val isAvailable = healthConnectManager?.isAvailable() == true
+                    if (!isAvailable) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Health Connect ist auf diesem Gerät derzeit nicht verfügbar oder muss im Google Play Store installiert/aktualisiert werden.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(10.dp)
+                            )
+                        }
+                    } else if (isHealthConnectAuthorized) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFFE8F5E9),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFF2E7D32),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Verbunden: Aktuelle Verbrauchsdaten werden im Dashboard live einberechnet.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF2E7D32),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = "Berechtigungen zum Lesen der Kaloriendaten fehlen noch.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                OutlinedButton(
+                                    onClick = {
+                                        if (healthConnectManager != null) {
+                                            permissionLauncher.launch(healthConnectManager.permissions)
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Berechtigungen erteilen")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Gemini API Key Card
         Card(
             shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

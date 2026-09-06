@@ -65,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import de.carcophan.swock.data.health.HealthCaloriesResult
 import de.carcophan.swock.data.preferences.UserProfileRepository
 import de.carcophan.swock.data.repository.MealRepository
 import de.carcophan.swock.domain.CalorieCalculator
@@ -80,8 +81,13 @@ import java.util.Locale
 import kotlin.math.abs
 
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     mealRepository: MealRepository,
@@ -89,6 +95,8 @@ fun DashboardScreen(
     onCapturePhoto: () -> Unit,
     onPickImage: () -> Unit,
     onDescribeMeal: (String) -> Unit = {},
+    healthCaloriesResult: HealthCaloriesResult? = null,
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -99,7 +107,13 @@ fun DashboardScreen(
 
     val bmr = remember(profile) { CalorieCalculator.calculateBmr(profile) }
     val tdee = remember(profile) { CalorieCalculator.calculateTdee(profile) }
-    val targetCalories = remember(profile) { CalorieCalculator.calculateDailyTarget(profile) }
+    val targetCalories = remember(profile, healthCaloriesResult) {
+        if (profile.syncHealthConnect && healthCaloriesResult != null && healthCaloriesResult.activeCaloriesBurned > 0) {
+            CalorieCalculator.calculateDynamicTarget(profile, healthCaloriesResult.activeCaloriesBurned)
+        } else {
+            CalorieCalculator.calculateDailyTarget(profile)
+        }
+    }
 
     val totalConsumed = remember(meals) { meals.sumOf { it.calories } }
     val totalProtein = remember(meals) { meals.sumOf { it.proteinGrams } }
@@ -174,16 +188,30 @@ fun DashboardScreen(
         ).show()
     }
 
+    var isRefreshing by remember { mutableStateOf(false) }
+
     Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                coroutineScope.launch {
+                    isRefreshing = true
+                    onRefresh()
+                    delay(400)
+                    isRefreshing = false
+                }
+            },
+            modifier = Modifier.fillMaxSize()
         ) {
-            // 1. Date Navigation Bar
-            item {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // 1. Date Navigation Bar
+                item {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
                 ) {
                     Row(
@@ -245,7 +273,8 @@ fun DashboardScreen(
                     status = calorieStatus,
                     protein = totalProtein,
                     carbs = totalCarbs,
-                    fat = totalFat
+                    fat = totalFat,
+                    healthCaloriesResult = if (profile.syncHealthConnect) healthCaloriesResult else null
                 )
             }
 
@@ -283,6 +312,7 @@ fun DashboardScreen(
                 }
             }
         }
+    }
 
         // Floating Action Buttons (Capture, Pick or Describe)
         Column(
@@ -427,7 +457,8 @@ fun CalorieOverviewCard(
     status: CalorieCalculator.CalorieStatus,
     protein: Double,
     carbs: Double,
-    fat: Double
+    fat: Double,
+    healthCaloriesResult: HealthCaloriesResult? = null
 ) {
     Card(
         shape = RoundedCornerShape(22.dp),
@@ -530,6 +561,62 @@ fun CalorieOverviewCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            healthCaloriesResult?.let { health ->
+                if (health.totalCaloriesBurned > 0 || health.activeCaloriesBurned > 0) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Smartwatch / Tracker:",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "${health.totalCaloriesBurned} kcal",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = if (health.projectedTotalForDay > health.totalCaloriesBurned) {
+                                            " bisher (24h: ~${health.projectedTotalForDay} kcal)"
+                                        } else {
+                                            " verbrannt"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (health.activeCaloriesBurned > 0) {
+                                    Text(
+                                        text = "davon aktiv: +${health.activeCaloriesBurned} kcal (im Tagesbudget gutgeschrieben)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(14.dp))

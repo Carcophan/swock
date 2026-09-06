@@ -12,12 +12,21 @@ import androidx.lifecycle.viewModelScope
 import de.carcophan.swock.Screen
 import de.carcophan.swock.data.preferences.UserProfileRepository
 import de.carcophan.swock.data.remote.GeminiFoodService
+import de.carcophan.swock.data.health.HealthCaloriesResult
+import de.carcophan.swock.data.health.HealthConnectManager
 import de.carcophan.swock.data.repository.MealRepository
 import de.carcophan.swock.model.FoodAnalysisResult
 import de.carcophan.swock.model.MealEntry
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 class MainViewModel(
     application: Application,
@@ -27,6 +36,77 @@ class MainViewModel(
     val mealRepository = MealRepository(application)
     val profileRepository = UserProfileRepository(application)
     val geminiFoodService = GeminiFoodService(application)
+    val healthConnectManager = HealthConnectManager(application)
+
+    private val _healthCaloriesForSelectedDate = MutableStateFlow<HealthCaloriesResult?>(null)
+    val healthCaloriesForSelectedDate: StateFlow<HealthCaloriesResult?> = _healthCaloriesForSelectedDate.asStateFlow()
+
+    private val _isHealthConnectAuthorized = MutableStateFlow(false)
+    val isHealthConnectAuthorized: StateFlow<Boolean> = _isHealthConnectAuthorized.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            combine(
+                mealRepository.selectedDateKey,
+                profileRepository.profile
+            ) { dateKey, profile ->
+                Pair(dateKey, profile.syncHealthConnect)
+            }.collect { (dateKey, syncEnabled) ->
+                if (syncEnabled && healthConnectManager.isAvailable()) {
+                    val hasPerms = healthConnectManager.hasAllPermissions()
+                    _isHealthConnectAuthorized.value = hasPerms
+                    if (hasPerms) {
+                        loadHealthCaloriesForDate(dateKey)
+                    } else {
+                        _healthCaloriesForSelectedDate.value = null
+                    }
+                } else {
+                    _healthCaloriesForSelectedDate.value = null
+                }
+            }
+        }
+    }
+
+    fun refreshHealthConnect() {
+        viewModelScope.launch {
+            if (healthConnectManager.isAvailable()) {
+                val hasPerms = healthConnectManager.hasAllPermissions()
+                _isHealthConnectAuthorized.value = hasPerms
+                if (hasPerms) {
+                    loadHealthCaloriesForDate(mealRepository.selectedDateKey.value)
+                }
+            }
+        }
+    }
+
+    private suspend fun loadHealthCaloriesForDate(dateKey: String) {
+        try {
+            val localDate = LocalDate.parse(dateKey)
+            val isToday = dateKey == mealRepository.currentDateKey()
+            val startOfDay = localDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
+            val endOfDay = localDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+
+            val result = if (isToday) {
+                val upToNow = healthConnectManager.getBurnedCalories(startOfDay, Instant.now())
+                val fullDay = healthConnectManager.getBurnedCalories(startOfDay, endOfDay)
+                HealthCaloriesResult(
+                    totalCaloriesBurned = upToNow.totalCaloriesBurned,
+                    activeCaloriesBurned = upToNow.activeCaloriesBurned,
+                    projectedTotalForDay = fullDay.totalCaloriesBurned
+                )
+            } else {
+                val fullDay = healthConnectManager.getBurnedCalories(startOfDay, endOfDay)
+                HealthCaloriesResult(
+                    totalCaloriesBurned = fullDay.totalCaloriesBurned,
+                    activeCaloriesBurned = fullDay.activeCaloriesBurned,
+                    projectedTotalForDay = fullDay.totalCaloriesBurned
+                )
+            }
+            _healthCaloriesForSelectedDate.value = result
+        } catch (e: Exception) {
+            _healthCaloriesForSelectedDate.value = null
+        }
+    }
 
     var currentScreen by mutableStateOf(Screen.DASHBOARD)
 
