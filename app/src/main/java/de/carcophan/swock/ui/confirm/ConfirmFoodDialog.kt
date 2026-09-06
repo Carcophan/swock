@@ -60,7 +60,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import de.carcophan.swock.model.FoodAnalysisResult
+import de.carcophan.swock.model.HealthRating
 import de.carcophan.swock.model.MealEntry
+import de.carcophan.swock.ui.common.HealthExplanationBox
+import de.carcophan.swock.ui.common.HealthRatingBadge
+import de.carcophan.swock.ui.common.HealthTrafficLightMiniPill
+import de.carcophan.swock.ui.common.HealthTrafficLightSelector
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -104,6 +109,8 @@ fun ConfirmFoodDialog(
     var portionDesc by rememberSaveable { mutableStateOf(initialAnalysis.portionDesc) }
     var isPortionCustomized by rememberSaveable { mutableStateOf(false) }
     var notes by rememberSaveable { mutableStateOf(initialAnalysis.notes) }
+    var healthRating by rememberSaveable { mutableStateOf(initialAnalysis.healthRating) }
+    var healthReason by rememberSaveable { mutableStateOf(initialAnalysis.healthReason) }
 
     fun updateForQuantity(newQ: Double) {
         if (newQ <= 0.0) return
@@ -474,6 +481,55 @@ fun ConfirmFoodDialog(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Ernährungs-Ampel (Traffic Light Indicator)
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                HealthTrafficLightMiniPill(activeRating = healthRating)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Ernährungs-Ampel",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            HealthRatingBadge(rating = healthRating)
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        HealthTrafficLightSelector(
+                            selectedRating = healthRating,
+                            onRatingSelected = { healthRating = it }
+                        )
+
+                        if (healthReason.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            HealthExplanationBox(
+                                rating = healthRating,
+                                reason = healthReason
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Portion
@@ -537,7 +593,9 @@ fun ConfirmFoodDialog(
                                 imagePath = imagePath,
                                 timestamp = currentTimestamp,
                                 dateKey = dateKey,
-                                notes = notes
+                                notes = notes,
+                                healthRating = healthRating,
+                                healthReason = healthReason
                             )
                             onConfirm(entry)
                         },

@@ -70,6 +70,7 @@ import de.carcophan.swock.data.repository.MealRepository
 import de.carcophan.swock.domain.CalorieCalculator
 import de.carcophan.swock.model.FoodAnalysisResult
 import de.carcophan.swock.model.MealEntry
+import de.carcophan.swock.ui.common.HealthRatingBadge
 import de.carcophan.swock.ui.confirm.ConfirmFoodDialog
 import java.io.File
 import java.text.SimpleDateFormat
@@ -396,7 +397,9 @@ fun DashboardScreen(
                 carbsGrams = meal.carbsGrams,
                 fatGrams = meal.fatGrams,
                 portionDesc = meal.portionDesc,
-                notes = meal.notes
+                notes = meal.notes,
+                healthRating = meal.healthRating,
+                healthReason = meal.healthReason
             ),
             existingMealId = meal.id,
             title = "Mahlzeit bearbeiten",
@@ -629,11 +632,19 @@ fun MealItemCard(
 
             // Meal Details
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = formattedTime,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = formattedTime,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    HealthRatingBadge(rating = meal.healthRating)
+                }
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = meal.name,
                     style = MaterialTheme.typography.titleMedium,

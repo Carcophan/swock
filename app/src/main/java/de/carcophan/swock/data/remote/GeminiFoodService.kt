@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
 import de.carcophan.swock.model.FoodAnalysisResult
+import de.carcophan.swock.model.HealthRating
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -122,6 +123,11 @@ class GeminiFoodService(private val context: Context) {
             Identifiziere das Nahrungsmittel oder Getränk, schätze oder berechne die Portionsgröße und ermittle möglichst genau die Kalorien (kcal) und die Makronährstoffe (Eiweiß, Kohlenhydrate, Fett).
             Falls mehrere Nahrungsmittel oder Getränke/Beilagen genannt werden, erfasse das gesamte Gericht bzw. die gesamte Mahlzeit kombiniert.
             
+            Bewerte außerdem die gesundheitliche Qualität (Ernährungs-Ampel) nach ernährungswissenschaftlichen Kriterien (Nutri-Score / Nährstoffdichte / Verarbeitungsgrad / Zucker & gesättigte Fette):
+            - "GREEN": Nährstoffreich, vollwertig, Gemüse, Obst, mageres Eiweiß, Wasser/ungesüßter Tee, wenig zugesetzter Zucker & schlechte Fette.
+            - "YELLOW": Ausgewogen bis durchschnittlich verarbeitet, normale Kohlenhydrat-/Fettträger (z. B. Nudeln, Reis, Brot, Mischkost), in Maßen vollkommen in Ordnung.
+            - "RED": Hohe Dichte an freiem Zucker, gesättigten Fettsäuren, Frittiertem, Fast Food, Softdrinks/Alkohol oder stark verarbeitet.
+            
             Gib deine Antwort AUSSCHLIESSLICH im folgenden JSON-Format zurück:
             {
               "name": "Name der Speise oder des Getränks auf Deutsch",
@@ -130,7 +136,9 @@ class GeminiFoodService(private val context: Context) {
               "carbsGrams": 55.0,
               "fatGrams": 14.0,
               "portionDesc": "1 Portion, ca. 350g",
-              "notes": "Zutaten oder kurze Anmerkung"
+              "notes": "Zutaten oder kurze Anmerkung",
+              "healthRating": "GREEN",
+              "healthReason": "Reich an Proteinen und Ballaststoffen, wenig Zucker"
             }
         """.trimIndent()
 
@@ -183,6 +191,11 @@ class GeminiFoodService(private val context: Context) {
             Identifiziere das Nahrungsmittel oder Getränk, schätze die Portionsgröße und ermittle möglichst genau die Kalorien (kcal) und die Makronährstoffe (Eiweiß, Kohlenhydrate, Fett).
             Falls mehrere Nahrungsmittel auf dem Bild sind, erfasse das gesamte Gericht/die gesamte Mahlzeit.
             
+            Bewerte außerdem die gesundheitliche Qualität (Ernährungs-Ampel) nach ernährungswissenschaftlichen Kriterien (Nutri-Score / Nährstoffdichte / Verarbeitungsgrad / Zucker & gesättigte Fette):
+            - "GREEN": Nährstoffreich, vollwertig, Gemüse, Obst, mageres Eiweiß, Wasser/ungesüßter Tee, wenig zugesetzter Zucker & schlechte Fette.
+            - "YELLOW": Ausgewogen bis durchschnittlich verarbeitet, normale Kohlenhydrat-/Fettträger (z. B. Nudeln, Reis, Brot, Mischkost), in Maßen vollkommen in Ordnung.
+            - "RED": Hohe Dichte an freiem Zucker, gesättigten Fettsäuren, Frittiertem, Fast Food, Softdrinks/Alkohol oder stark verarbeitet.
+            
             Gib deine Antwort AUSSCHLIESSLICH im folgenden JSON-Format zurück:
             {
               "name": "Name der Speise oder des Getränks auf Deutsch",
@@ -191,7 +204,9 @@ class GeminiFoodService(private val context: Context) {
               "carbsGrams": 55.0,
               "fatGrams": 14.0,
               "portionDesc": "1 Portion, ca. 350g",
-              "notes": "Zutaten oder kurze Anmerkung"
+              "notes": "Zutaten oder kurze Anmerkung",
+              "healthRating": "GREEN",
+              "healthReason": "Reich an Proteinen und Ballaststoffen, wenig Zucker"
             }
         """.trimIndent()
 
@@ -277,6 +292,19 @@ class GeminiFoodService(private val context: Context) {
         val portionDesc = foodJson.optString("portionDesc", "1 Portion")
         val notes = foodJson.optString("notes", "")
 
+        val healthRatingRaw = foodJson.optString("healthRating", "")
+        val healthReason = foodJson.optString("healthReason", "")
+        val healthRating = if (healthRatingRaw.isNotBlank()) {
+            HealthRating.fromString(healthRatingRaw)
+        } else {
+            // Heuristic fallback if not provided
+            when {
+                calories > 750 && fatGrams > 35 -> HealthRating.RED
+                proteinGrams >= 20 && calories <= 500 -> HealthRating.GREEN
+                else -> HealthRating.YELLOW
+            }
+        }
+
         return FoodAnalysisResult(
             name = name,
             calories = calories,
@@ -284,7 +312,9 @@ class GeminiFoodService(private val context: Context) {
             carbsGrams = carbsGrams,
             fatGrams = fatGrams,
             portionDesc = portionDesc,
-            notes = notes
+            notes = notes,
+            healthRating = healthRating,
+            healthReason = healthReason
         )
     }
 

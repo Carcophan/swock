@@ -2,8 +2,10 @@ package de.carcophan.swock.data.local
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import de.carcophan.swock.model.HealthRating
 import de.carcophan.swock.model.MealEntry
 
 class MealDatabaseHelper(context: Context) :
@@ -11,7 +13,7 @@ class MealDatabaseHelper(context: Context) :
 
     companion object {
         const val DATABASE_NAME = "swock_meals.db"
-        const val DATABASE_VERSION = 1
+        const val DATABASE_VERSION = 2
 
         const val TABLE_MEALS = "meals"
         const val COL_ID = "id"
@@ -25,6 +27,8 @@ class MealDatabaseHelper(context: Context) :
         const val COL_TIMESTAMP = "timestamp"
         const val COL_DATE_KEY = "date_key"
         const val COL_NOTES = "notes"
+        const val COL_HEALTH_RATING = "health_rating"
+        const val COL_HEALTH_REASON = "health_reason"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -40,7 +44,9 @@ class MealDatabaseHelper(context: Context) :
                 $COL_IMAGE_PATH TEXT NOT NULL,
                 $COL_TIMESTAMP INTEGER NOT NULL,
                 $COL_DATE_KEY TEXT NOT NULL,
-                $COL_NOTES TEXT
+                $COL_NOTES TEXT,
+                $COL_HEALTH_RATING TEXT DEFAULT 'YELLOW',
+                $COL_HEALTH_REASON TEXT DEFAULT ''
             )
         """.trimIndent()
         db.execSQL(createQuery)
@@ -48,7 +54,10 @@ class MealDatabaseHelper(context: Context) :
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // Migration logic if schema changes
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE $TABLE_MEALS ADD COLUMN $COL_HEALTH_RATING TEXT DEFAULT 'YELLOW'")
+            db.execSQL("ALTER TABLE $TABLE_MEALS ADD COLUMN $COL_HEALTH_REASON TEXT DEFAULT ''")
+        }
     }
 
     fun insertMeal(meal: MealEntry): Long {
@@ -64,6 +73,8 @@ class MealDatabaseHelper(context: Context) :
             put(COL_TIMESTAMP, meal.timestamp)
             put(COL_DATE_KEY, meal.dateKey)
             put(COL_NOTES, meal.notes)
+            put(COL_HEALTH_RATING, meal.healthRating.name)
+            put(COL_HEALTH_REASON, meal.healthReason)
         }
         return db.insert(TABLE_MEALS, null, values)
     }
@@ -86,8 +97,45 @@ class MealDatabaseHelper(context: Context) :
             put(COL_TIMESTAMP, meal.timestamp)
             put(COL_DATE_KEY, meal.dateKey)
             put(COL_NOTES, meal.notes)
+            put(COL_HEALTH_RATING, meal.healthRating.name)
+            put(COL_HEALTH_REASON, meal.healthReason)
         }
         return db.update(TABLE_MEALS, values, "$COL_ID = ?", arrayOf(meal.id.toString()))
+    }
+
+    private fun cursorToMeal(c: Cursor): MealEntry {
+        val idIndex = c.getColumnIndexOrThrow(COL_ID)
+        val nameIndex = c.getColumnIndexOrThrow(COL_NAME)
+        val caloriesIndex = c.getColumnIndexOrThrow(COL_CALORIES)
+        val proteinIndex = c.getColumnIndexOrThrow(COL_PROTEIN)
+        val carbsIndex = c.getColumnIndexOrThrow(COL_CARBS)
+        val fatIndex = c.getColumnIndexOrThrow(COL_FAT)
+        val portionIndex = c.getColumnIndexOrThrow(COL_PORTION)
+        val imagePathIndex = c.getColumnIndexOrThrow(COL_IMAGE_PATH)
+        val timestampIndex = c.getColumnIndexOrThrow(COL_TIMESTAMP)
+        val dateKeyIndex = c.getColumnIndexOrThrow(COL_DATE_KEY)
+        val notesIndex = c.getColumnIndexOrThrow(COL_NOTES)
+        val healthRatingIndex = c.getColumnIndex(COL_HEALTH_RATING)
+        val healthReasonIndex = c.getColumnIndex(COL_HEALTH_REASON)
+
+        val ratingStr = if (healthRatingIndex != -1) c.getString(healthRatingIndex) else null
+        val reasonStr = if (healthReasonIndex != -1) c.getString(healthReasonIndex) ?: "" else ""
+
+        return MealEntry(
+            id = c.getLong(idIndex),
+            name = c.getString(nameIndex),
+            calories = c.getInt(caloriesIndex),
+            proteinGrams = c.getDouble(proteinIndex),
+            carbsGrams = c.getDouble(carbsIndex),
+            fatGrams = c.getDouble(fatIndex),
+            portionDesc = c.getString(portionIndex),
+            imagePath = c.getString(imagePathIndex),
+            timestamp = c.getLong(timestampIndex),
+            dateKey = c.getString(dateKeyIndex),
+            notes = c.getString(notesIndex) ?: "",
+            healthRating = HealthRating.fromString(ratingStr),
+            healthReason = reasonStr
+        )
     }
 
     fun getMealsForDate(dateKey: String): List<MealEntry> {
@@ -103,34 +151,8 @@ class MealDatabaseHelper(context: Context) :
             "$COL_TIMESTAMP DESC"
         )
         cursor.use { c ->
-            val idIndex = c.getColumnIndexOrThrow(COL_ID)
-            val nameIndex = c.getColumnIndexOrThrow(COL_NAME)
-            val caloriesIndex = c.getColumnIndexOrThrow(COL_CALORIES)
-            val proteinIndex = c.getColumnIndexOrThrow(COL_PROTEIN)
-            val carbsIndex = c.getColumnIndexOrThrow(COL_CARBS)
-            val fatIndex = c.getColumnIndexOrThrow(COL_FAT)
-            val portionIndex = c.getColumnIndexOrThrow(COL_PORTION)
-            val imagePathIndex = c.getColumnIndexOrThrow(COL_IMAGE_PATH)
-            val timestampIndex = c.getColumnIndexOrThrow(COL_TIMESTAMP)
-            val dateKeyIndex = c.getColumnIndexOrThrow(COL_DATE_KEY)
-            val notesIndex = c.getColumnIndexOrThrow(COL_NOTES)
-
             while (c.moveToNext()) {
-                list.add(
-                    MealEntry(
-                        id = c.getLong(idIndex),
-                        name = c.getString(nameIndex),
-                        calories = c.getInt(caloriesIndex),
-                        proteinGrams = c.getDouble(proteinIndex),
-                        carbsGrams = c.getDouble(carbsIndex),
-                        fatGrams = c.getDouble(fatIndex),
-                        portionDesc = c.getString(portionIndex),
-                        imagePath = c.getString(imagePathIndex),
-                        timestamp = c.getLong(timestampIndex),
-                        dateKey = c.getString(dateKeyIndex),
-                        notes = c.getString(notesIndex) ?: ""
-                    )
-                )
+                list.add(cursorToMeal(c))
             }
         }
         return list
@@ -157,34 +179,8 @@ class MealDatabaseHelper(context: Context) :
         val db = readableDatabase
         val cursor = db.query(TABLE_MEALS, null, null, null, null, null, "$COL_TIMESTAMP DESC")
         cursor.use { c ->
-            val idIndex = c.getColumnIndexOrThrow(COL_ID)
-            val nameIndex = c.getColumnIndexOrThrow(COL_NAME)
-            val caloriesIndex = c.getColumnIndexOrThrow(COL_CALORIES)
-            val proteinIndex = c.getColumnIndexOrThrow(COL_PROTEIN)
-            val carbsIndex = c.getColumnIndexOrThrow(COL_CARBS)
-            val fatIndex = c.getColumnIndexOrThrow(COL_FAT)
-            val portionIndex = c.getColumnIndexOrThrow(COL_PORTION)
-            val imagePathIndex = c.getColumnIndexOrThrow(COL_IMAGE_PATH)
-            val timestampIndex = c.getColumnIndexOrThrow(COL_TIMESTAMP)
-            val dateKeyIndex = c.getColumnIndexOrThrow(COL_DATE_KEY)
-            val notesIndex = c.getColumnIndexOrThrow(COL_NOTES)
-
             while (c.moveToNext()) {
-                list.add(
-                    MealEntry(
-                        id = c.getLong(idIndex),
-                        name = c.getString(nameIndex),
-                        calories = c.getInt(caloriesIndex),
-                        proteinGrams = c.getDouble(proteinIndex),
-                        carbsGrams = c.getDouble(carbsIndex),
-                        fatGrams = c.getDouble(fatIndex),
-                        portionDesc = c.getString(portionIndex),
-                        imagePath = c.getString(imagePathIndex),
-                        timestamp = c.getLong(timestampIndex),
-                        dateKey = c.getString(dateKeyIndex),
-                        notes = c.getString(notesIndex) ?: ""
-                    )
-                )
+                list.add(cursorToMeal(c))
             }
         }
         return list
