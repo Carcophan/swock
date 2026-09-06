@@ -61,6 +61,7 @@ fun VitaminOverviewCard(
     meals: List<MealEntry>,
     modifier: Modifier = Modifier
 ) {
+    var isCardExpanded by rememberSaveable { mutableStateOf(false) }
     var showAllVitamins by rememberSaveable { mutableStateOf(false) }
     var expandedVitaminCode by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -81,13 +82,18 @@ fun VitaminOverviewCard(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            // Header: Title + Coverage Pill
+            // Header: Title + Coverage Pill + Expand/Collapse
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isCardExpanded = !isCardExpanded },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Box(
                         modifier = Modifier
                             .size(36.dp)
@@ -117,102 +123,118 @@ fun VitaminOverviewCard(
                     }
                 }
 
-                // Coverage Badge
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (coveredCount >= 7) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
-                ) {
-                    Text(
-                        text = "$coveredCount / 13 gedeckt",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (coveredCount >= 7) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Filter Chips
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = !showAllVitamins,
-                    onClick = { showAllVitamins = false },
-                    label = { Text("Konsumiert (${consumedSummaries.size})") },
-                    leadingIcon = if (!showAllVitamins) {
-                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                    } else null,
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                )
-
-                FilterChip(
-                    selected = showAllVitamins,
-                    onClick = { showAllVitamins = true },
-                    label = { Text("Alle 13 Vitamine") },
-                    leadingIcon = if (showAllVitamins) {
-                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                    } else null,
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (displayList.isEmpty()) {
-                // Empty state
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Coverage Badge
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (coveredCount >= 7) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.LocalPharmacy,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Noch keine Vitamindaten für diesen Tag",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Erfasse eine Mahlzeit, um deinen täglichen Vitaminstatus zu verfolgen.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "$coveredCount / 13 gedeckt",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (coveredCount >= 7) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                         )
                     }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        imageVector = if (isCardExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (isCardExpanded) "Einklappen" else "Ausklappen",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (summary in displayList) {
-                        val isExpanded = expandedVitaminCode == summary.type.code
-                        VitaminRowItem(
-                            summary = summary,
-                            isExpanded = isExpanded,
-                            onToggleExpand = {
-                                expandedVitaminCode = if (isExpanded) null else summary.type.code
-                            }
+            }
+
+            AnimatedVisibility(
+                visible = isCardExpanded,
+                enter = expandVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+                exit = shrinkVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Filter Chips
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = !showAllVitamins,
+                            onClick = { showAllVitamins = false },
+                            label = { Text("Konsumiert (${consumedSummaries.size})") },
+                            leadingIcon = if (!showAllVitamins) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         )
+
+                        FilterChip(
+                            selected = showAllVitamins,
+                            onClick = { showAllVitamins = true },
+                            label = { Text("Alle 13 Vitamine") },
+                            leadingIcon = if (showAllVitamins) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (displayList.isEmpty()) {
+                        // Empty state
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocalPharmacy,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Noch keine Vitamindaten für diesen Tag",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Erfasse eine Mahlzeit, um deinen täglichen Vitaminstatus zu verfolgen.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            for (summary in displayList) {
+                                val isExpanded = expandedVitaminCode == summary.type.code
+                                VitaminRowItem(
+                                    summary = summary,
+                                    isExpanded = isExpanded,
+                                    onToggleExpand = {
+                                        expandedVitaminCode = if (isExpanded) null else summary.type.code
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }

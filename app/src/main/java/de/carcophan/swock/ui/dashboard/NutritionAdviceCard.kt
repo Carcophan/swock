@@ -75,7 +75,7 @@ fun NutritionAdviceCard(
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(AdviceTab.ALL) }
-    var isExpanded by rememberSaveable { mutableStateOf(true) }
+    var isExpanded by rememberSaveable { mutableStateOf(false) }
 
     val recCount = advice.recommendations.size
     val avoidCount = advice.avoidances.size
