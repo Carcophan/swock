@@ -39,6 +39,9 @@ class MealRepository(private val context: Context) {
 
     init {
         refreshData()
+        scope.launch {
+            cleanOrphanedImages()
+        }
     }
 
     fun currentDateKey(): String {
@@ -70,18 +73,135 @@ class MealRepository(private val context: Context) {
 
     suspend fun deleteMeal(meal: MealEntry) = withContext(Dispatchers.IO) {
         dbHelper.deleteMeal(meal.id)
-        if (meal.imagePath.isNotEmpty()) {
-            val file = File(meal.imagePath)
-            if (file.exists()) {
-                file.delete()
-            }
-        }
+        deleteImageFilesForMeal(meal.imagePath)
+        cleanOrphanedImages()
         refreshData()
     }
 
+    suspend fun deleteMealById(mealId: Long) = withContext(Dispatchers.IO) {
+        val meal = dbHelper.getAllMeals().firstOrNull { it.id == mealId }
+        if (meal != null) {
+            deleteMeal(meal)
+        } else {
+            dbHelper.deleteMeal(mealId)
+            cleanOrphanedImages()
+            refreshData()
+        }
+    }
+
     suspend fun updateMeal(meal: MealEntry) = withContext(Dispatchers.IO) {
+        val existing = dbHelper.getAllMeals().firstOrNull { it.id == meal.id }
+        if (existing != null && existing.imagePath.isNotBlank() && existing.imagePath != meal.imagePath) {
+            deleteImageFilesForMeal(existing.imagePath)
+        }
         dbHelper.updateMeal(meal)
         refreshData()
+    }
+
+    /**
+     * Thoroughly deletes image file(s) for a given meal image path.
+     * Handles absolute paths, file:// prefixes, content:// URIs, filenames in food_images,
+     * matching temporary camera images, and evicts Coil cache entries.
+     */
+    @OptIn(coil.annotation.ExperimentalCoilApi::class)
+    fun deleteImageFilesForMeal(imagePath: String) {
+        if (imagePath.isBlank()) return
+        try {
+            val cleanPath = if (imagePath.startsWith("file://")) {
+                imagePath.removePrefix("file://")
+            } else {
+                imagePath
+            }
+
+            if (cleanPath.startsWith("content://")) {
+                try {
+                    context.contentResolver.delete(Uri.parse(cleanPath), null, null)
+                } catch (e: Exception) {
+                    // Ignore ContentResolver deletion issues
+                }
+            } else {
+                // 1. Delete direct file if exists
+                val directFile = File(cleanPath)
+                if (directFile.exists()) {
+                    directFile.delete()
+                }
+
+                // 2. Also check and delete by filename inside food_images directory
+                val imagesDir = File(context.filesDir, "food_images")
+                val fileName = directFile.name
+                if (fileName.isNotBlank()) {
+                    val fileInFoodImages = File(imagesDir, fileName)
+                    if (fileInFoodImages.exists()) {
+                        fileInFoodImages.delete()
+                    }
+                }
+
+                // 3. Also check if a corresponding camera photo exists in cacheDir/images
+                val cacheImagesDir = File(context.cacheDir, "images")
+                if (fileName.isNotBlank()) {
+                    val fileInCache = File(cacheImagesDir, fileName)
+                    if (fileInCache.exists()) {
+                        fileInCache.delete()
+                    }
+                }
+            }
+
+            // 4. Invalidate Coil memory and disk cache
+            try {
+                val imageLoader = coil.Coil.imageLoader(context)
+                imageLoader.diskCache?.remove(cleanPath)
+                imageLoader.memoryCache?.remove(coil.memory.MemoryCache.Key(cleanPath))
+                val directFile = File(cleanPath)
+                if (directFile.isAbsolute) {
+                    imageLoader.diskCache?.remove(directFile.absolutePath)
+                    imageLoader.memoryCache?.remove(coil.memory.MemoryCache.Key(directFile.absolutePath))
+                }
+            } catch (t: Throwable) {
+                // Ignore Coil eviction errors
+            }
+        } catch (e: Exception) {
+            // Non-critical image deletion error
+        }
+    }
+
+    /**
+     * Removes any image file in internal food_images storage that is not referenced
+     * by any existing meal in the database.
+     */
+    suspend fun cleanOrphanedImages(excludePaths: Set<String> = emptySet()) = withContext(Dispatchers.IO) {
+        try {
+            val allMeals = dbHelper.getAllMeals()
+            val referencedPaths = allMeals.mapNotNull { it.imagePath.ifBlank { null } }.toSet()
+            val referencedFileNames = referencedPaths.map { File(it).name }.toSet()
+
+            val imagesDir = File(context.filesDir, "food_images")
+            if (imagesDir.exists() && imagesDir.isDirectory) {
+                imagesDir.listFiles()?.forEach { file ->
+                    if (file.isFile) {
+                        val isReferenced = referencedFileNames.contains(file.name) ||
+                                referencedPaths.contains(file.absolutePath) ||
+                                excludePaths.contains(file.absolutePath) ||
+                                excludePaths.any { it.endsWith(file.name) }
+                        if (!isReferenced) {
+                            file.delete()
+                        }
+                    }
+                }
+            }
+
+            // Also clean up stale camera photos in cacheDir/images older than 10 minutes
+            val cacheImagesDir = File(context.cacheDir, "images")
+            if (cacheImagesDir.exists() && cacheImagesDir.isDirectory) {
+                val tenMinutesAgo = System.currentTimeMillis() - 10 * 60 * 1000L
+                cacheImagesDir.listFiles()?.forEach { file ->
+                    if (file.isFile && file.name.startsWith("camera_photo_") && file.lastModified() < tenMinutesAgo) {
+                        file.delete()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore non-fatal cleanup errors
+        }
     }
 
     suspend fun getMealsForDateDirect(dateKey: String): List<MealEntry> = withContext(Dispatchers.IO) {

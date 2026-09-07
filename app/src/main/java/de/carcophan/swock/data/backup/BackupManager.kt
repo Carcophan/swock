@@ -65,6 +65,9 @@ class BackupManager(
             // 1. Force SQLite WAL checkpoint so DB file is up to date
             mealRepository.getDbHelper().checkpoint()
 
+            // 2. Clean orphaned images so backup only includes images of active meals
+            mealRepository.cleanOrphanedImages()
+
             val dbFile = context.getDatabasePath(MealDatabaseHelper.DATABASE_NAME)
             val imagesDir = File(context.filesDir, "food_images")
             val imageFiles = if (imagesDir.exists()) {

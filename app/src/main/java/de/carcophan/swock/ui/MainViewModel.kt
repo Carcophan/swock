@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.Instant
@@ -174,8 +175,19 @@ class MainViewModel(
             isAnalyzing = true
             analysisErrorMessage = null
 
+            var savedLocalPath = ""
             try {
-                val savedLocalPath = mealRepository.saveImageFromUri(uri)
+                savedLocalPath = mealRepository.saveImageFromUri(uri)
+
+                // Clean up uncompressed camera temp photo in cacheDir now that it has been compressed into food_images
+                val context = getApplication<Application>()
+                if (uri == tempCameraUri || uri.path?.contains("camera_photo_") == true) {
+                    try {
+                        context.contentResolver.delete(uri, null, null)
+                    } catch (e: Exception) { }
+                    tempCameraUri = null
+                }
+
                 val result = geminiFoodService.analyzeFoodImage(
                     imagePath = savedLocalPath,
                     apiKey = profile.geminiApiKey,
@@ -188,10 +200,14 @@ class MainViewModel(
                         pendingAnalysisResult = Pair(savedLocalPath, analysis)
                     },
                     onFailure = { error ->
+                        mealRepository.deleteImageFilesForMeal(savedLocalPath)
                         analysisErrorMessage = error.localizedMessage ?: "Fehler bei der Bildanalyse durch Gemini."
                     }
                 )
             } catch (e: Exception) {
+                if (savedLocalPath.isNotBlank()) {
+                    mealRepository.deleteImageFilesForMeal(savedLocalPath)
+                }
                 isAnalyzing = false
                 analysisErrorMessage = "Fehler beim Laden des Bildes: ${e.localizedMessage}"
             }
@@ -253,6 +269,12 @@ class MainViewModel(
     }
 
     fun dismissAnalysisResult() {
+        pendingAnalysisResult?.first?.let { imagePath ->
+            viewModelScope.launch(Dispatchers.IO) {
+                mealRepository.deleteImageFilesForMeal(imagePath)
+                mealRepository.cleanOrphanedImages()
+            }
+        }
         pendingAnalysisResult = null
     }
 

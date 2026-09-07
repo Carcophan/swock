@@ -143,9 +143,30 @@ cd swock
 ```
 
 Auf einem angeschlossenen Android-Gerät installieren:
+
+**Option A: Direkt über Gradle**
 ```bash
 ./gradlew installDebug
 ```
+
+**Option B: Direkt per ADB**
+1. Überprüfen, ob das Gerät erkannt wird:
+   ```bash
+   adb devices
+   ```
+2. APK installieren (bzw. bei bestehender Installation aktualisieren mit `-r`):
+   ```bash
+   adb install -r app/build/outputs/apk/debug/app-debug.apk
+   ```
+   *(Falls mehrere Geräte verbunden sind, das Zielgerät mit `-s <DEVICE_ID>` angeben)*
+
+3. *(Optional)* App direkt über ADB starten:
+   ```bash
+   adb shell am start -n de.carcophan.swock/.MainActivity
+   ```
+
+*(Hinweis: Falls du die APK-Datei lediglich als Datei auf den Gerätespeicher übertragen möchtest, z. B. in den Download-Ordner: `adb push app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/`)*
+
 
 ---
 
