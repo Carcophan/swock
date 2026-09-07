@@ -143,6 +143,11 @@ fun SettingsScreen(
     var backupWifiOnly by remember(currentProfile) { mutableStateOf(currentProfile.backupWifiOnly) }
     var googleAccountEmail by remember(currentProfile) { mutableStateOf(currentProfile.googleAccountEmail) }
 
+    var showVitaminOverview by remember(currentProfile) { mutableStateOf(currentProfile.showVitaminOverview) }
+    var showNutritionBalance by remember(currentProfile) { mutableStateOf(currentProfile.showNutritionBalance) }
+    var showRecommendations by remember(currentProfile) { mutableStateOf(currentProfile.showRecommendations) }
+    var showAvoidances by remember(currentProfile) { mutableStateOf(currentProfile.showAvoidances) }
+
     var isCreatingCloudBackup by remember { mutableStateOf(false) }
     var isRestoringCloudBackup by remember { mutableStateOf(false) }
     var isFetchingBackups by remember { mutableStateOf(false) }
@@ -226,7 +231,8 @@ fun SettingsScreen(
     val previewProfile = remember(
         ageText, gender, heightText, weightText, activityLevel, calorieGoal,
         geminiApiKey, geminiModel, syncHealthConnect,
-        autoBackupEnabled, backupIntervalDays, backupWifiOnly, googleAccountEmail
+        autoBackupEnabled, backupIntervalDays, backupWifiOnly, googleAccountEmail,
+        showVitaminOverview, showNutritionBalance, showRecommendations, showAvoidances
     ) {
         val age = ageText.toIntOrNull() ?: 30
         val height = heightText.replace(',', '.').toDoubleOrNull() ?: 178.0
@@ -245,7 +251,11 @@ fun SettingsScreen(
             backupIntervalDays = backupIntervalDays,
             backupWifiOnly = backupWifiOnly,
             lastBackupTimestamp = currentProfile.lastBackupTimestamp,
-            googleAccountEmail = googleAccountEmail
+            googleAccountEmail = googleAccountEmail,
+            showVitaminOverview = showVitaminOverview,
+            showNutritionBalance = showNutritionBalance,
+            showRecommendations = showRecommendations,
+            showAvoidances = showAvoidances
         )
     }
 
@@ -656,7 +666,152 @@ fun SettingsScreen(
             }
         }
 
-        // 4. Gemini API Key Card
+        // 4. Dashboard Sections Visibility Card
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Visibility,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Dashboard-Anzeige & Bereiche",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Auswertungen & Empfehlungen nach Wunsch anpassen",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 1. Vitamin-Übersicht Switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Vitamin-Übersicht",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Tägliche Mikronährstoff- und Vitamin-Bedarfsdeckung anzeigen",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = showVitaminOverview,
+                        onCheckedChange = { showVitaminOverview = it }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 2. Tages-Ernährungsbalance Switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Tages-Ernährungsbalance",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Zusammenfassung & Ausgewogenheits-Score anzeigen",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = showNutritionBalance,
+                        onCheckedChange = { showNutritionBalance = it }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 3. Ergänzen-Bereich Switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Ergänzen-Bereich",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Empfehlungen für noch fehlende gesunde Lebensmittel ('Gezielt ergänzen')",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = showRecommendations,
+                        onCheckedChange = { showRecommendations = it }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 4. Meiden-Bereich Switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Meiden-Bereich",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Warnungen und Hinweise zu heute zu meidenden Speisen ('Heute vermeiden')",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = showAvoidances,
+                        onCheckedChange = { showAvoidances = it }
+                    )
+                }
+            }
+        }
+
+        // 5. Gemini API Key Card
         Card(
             shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

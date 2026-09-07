@@ -53,6 +53,11 @@ class UserProfileRepository(context: Context) {
         val lastBackupTimestamp = prefs.getLong(KEY_LAST_BACKUP_TIMESTAMP, 0L)
         val googleAccountEmail = prefs.getString(KEY_GOOGLE_ACCOUNT_EMAIL, "") ?: ""
 
+        val showVitaminOverview = prefs.getBoolean(KEY_SHOW_VITAMIN_OVERVIEW, true)
+        val showNutritionBalance = prefs.getBoolean(KEY_SHOW_NUTRITION_BALANCE, true)
+        val showRecommendations = prefs.getBoolean(KEY_SHOW_RECOMMENDATIONS, true)
+        val showAvoidances = prefs.getBoolean(KEY_SHOW_AVOIDANCES, true)
+
         return UserProfile(
             age = age,
             gender = gender,
@@ -67,7 +72,11 @@ class UserProfileRepository(context: Context) {
             backupIntervalDays = backupIntervalDays,
             backupWifiOnly = backupWifiOnly,
             lastBackupTimestamp = lastBackupTimestamp,
-            googleAccountEmail = googleAccountEmail
+            googleAccountEmail = googleAccountEmail,
+            showVitaminOverview = showVitaminOverview,
+            showNutritionBalance = showNutritionBalance,
+            showRecommendations = showRecommendations,
+            showAvoidances = showAvoidances
         )
     }
 
@@ -87,6 +96,10 @@ class UserProfileRepository(context: Context) {
             .putBoolean(KEY_BACKUP_WIFI_ONLY, newProfile.backupWifiOnly)
             .putLong(KEY_LAST_BACKUP_TIMESTAMP, newProfile.lastBackupTimestamp)
             .putString(KEY_GOOGLE_ACCOUNT_EMAIL, newProfile.googleAccountEmail)
+            .putBoolean(KEY_SHOW_VITAMIN_OVERVIEW, newProfile.showVitaminOverview)
+            .putBoolean(KEY_SHOW_NUTRITION_BALANCE, newProfile.showNutritionBalance)
+            .putBoolean(KEY_SHOW_RECOMMENDATIONS, newProfile.showRecommendations)
+            .putBoolean(KEY_SHOW_AVOIDANCES, newProfile.showAvoidances)
             .apply()
 
         _profile.value = newProfile
@@ -118,5 +131,10 @@ class UserProfileRepository(context: Context) {
         private const val KEY_BACKUP_WIFI_ONLY = "pref_backup_wifi_only"
         private const val KEY_LAST_BACKUP_TIMESTAMP = "pref_last_backup_timestamp"
         private const val KEY_GOOGLE_ACCOUNT_EMAIL = "pref_google_account_email"
+
+        private const val KEY_SHOW_VITAMIN_OVERVIEW = "pref_show_vitamin_overview"
+        private const val KEY_SHOW_NUTRITION_BALANCE = "pref_show_nutrition_balance"
+        private const val KEY_SHOW_RECOMMENDATIONS = "pref_show_recommendations"
+        private const val KEY_SHOW_AVOIDANCES = "pref_show_avoidances"
     }
 }

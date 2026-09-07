@@ -35,7 +35,11 @@ data class UserProfile(
     val backupIntervalDays: Int = 1,
     val backupWifiOnly: Boolean = true,
     val lastBackupTimestamp: Long = 0L,
-    val googleAccountEmail: String = ""
+    val googleAccountEmail: String = "",
+    val showVitaminOverview: Boolean = true,
+    val showNutritionBalance: Boolean = true,
+    val showRecommendations: Boolean = true,
+    val showAvoidances: Boolean = true
 ) {
     val geminiModelDisplayName: String
         get() = when (geminiModel) {

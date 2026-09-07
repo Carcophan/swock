@@ -72,6 +72,9 @@ fun NutritionAdviceCard(
     advice: DailyNutritionAdvice,
     isGeneratingAi: Boolean,
     onRequestAiAdvice: () -> Unit,
+    showNutritionBalance: Boolean = true,
+    showRecommendations: Boolean = true,
+    showAvoidances: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(AdviceTab.ALL) }
@@ -79,6 +82,14 @@ fun NutritionAdviceCard(
 
     val recCount = advice.recommendations.size
     val avoidCount = advice.avoidances.size
+
+    val headerTitle = if (showNutritionBalance) "Tages-Ernährungsbalance" else "Ernährungsempfehlungen"
+    val headerSubtitle = when {
+        showRecommendations && showAvoidances -> "Was dir noch guttut & was du meiden solltest"
+        showRecommendations -> "Was dir heute noch guttut"
+        showAvoidances -> "Was du heute meiden solltest"
+        else -> "Auswertung deiner Ernährung"
+    }
 
     Card(
         shape = RoundedCornerShape(24.dp),
@@ -119,12 +130,12 @@ fun NutritionAdviceCard(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Tages-Ernährungsbalance",
+                            text = headerTitle,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Was dir noch guttut & was du meiden solltest",
+                            text = headerSubtitle,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -162,98 +173,102 @@ fun NutritionAdviceCard(
                 Column {
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Summary Banner
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    // Summary Banner (Tages-Ernährungsbalance Score & Text)
+                    if (showNutritionBalance) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = advice.balanceScore,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = advice.summaryText,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    lineHeight = 18.sp
-                                )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = advice.balanceScore,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = advice.summaryText,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        lineHeight = 18.sp
+                                    )
+                                }
                             }
+                        }
+
+                        if (showRecommendations || showAvoidances) {
+                            Spacer(modifier = Modifier.height(12.dp))
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    // Filter Chips (Only shown when both sections are enabled)
+                    if (showRecommendations && showAvoidances) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = selectedTab == AdviceTab.ALL,
+                                onClick = { selectedTab = AdviceTab.ALL },
+                                label = { Text("Alle (${recCount + avoidCount})") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                            FilterChip(
+                                selected = selectedTab == AdviceTab.RECOMMEND,
+                                onClick = { selectedTab = AdviceTab.RECOMMEND },
+                                label = { Text("Ergänzen ($recCount)") },
+                                leadingIcon = {
+                                    Text("🥗", fontSize = 13.sp)
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                            FilterChip(
+                                selected = selectedTab == AdviceTab.AVOID,
+                                onClick = { selectedTab = AdviceTab.AVOID },
+                                label = { Text("Meiden ($avoidCount)") },
+                                leadingIcon = {
+                                    Text("🛑", fontSize = 13.sp)
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            )
+                        }
 
-                    // Filter Chips
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilterChip(
-                            selected = selectedTab == AdviceTab.ALL,
-                            onClick = { selectedTab = AdviceTab.ALL },
-                            label = { Text("Alle (${recCount + avoidCount})") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        )
-                        FilterChip(
-                            selected = selectedTab == AdviceTab.RECOMMEND,
-                            onClick = { selectedTab = AdviceTab.RECOMMEND },
-                            label = { Text("Ergänzen ($recCount)") },
-                            leadingIcon = {
-                                Text("🥗", fontSize = 13.sp)
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        )
-                        FilterChip(
-                            selected = selectedTab == AdviceTab.AVOID,
-                            onClick = { selectedTab = AdviceTab.AVOID },
-                            label = { Text("Meiden ($avoidCount)") },
-                            leadingIcon = {
-                                Text("🛑", fontSize = 13.sp)
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        )
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
                     // Section 1: Recommendations ("Was du noch essen/trinken solltest")
-                    if (selectedTab == AdviceTab.ALL || selectedTab == AdviceTab.RECOMMEND) {
-                        if (selectedTab == AdviceTab.ALL) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            ) {
-                                Text(
-                                    text = "🥗 Gezielt ergänzen",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Essen & Trinken",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                    if (showRecommendations && (!showAvoidances || selectedTab == AdviceTab.ALL || selectedTab == AdviceTab.RECOMMEND)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            Text(
+                                text = "🥗 Gezielt ergänzen",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Essen & Trinken",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
 
                         advice.recommendations.forEach { item ->
@@ -263,26 +278,26 @@ fun NutritionAdviceCard(
                     }
 
                     // Section 2: Avoidances ("Was du heute meiden solltest")
-                    if (selectedTab == AdviceTab.ALL || selectedTab == AdviceTab.AVOID) {
-                        if (selectedTab == AdviceTab.ALL) {
+                    if (showAvoidances && (!showRecommendations || selectedTab == AdviceTab.ALL || selectedTab == AdviceTab.AVOID)) {
+                        if (showRecommendations && selectedTab == AdviceTab.ALL) {
                             Spacer(modifier = Modifier.height(4.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            ) {
-                                Text(
-                                    text = "🛑 Heute vermeiden",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFE53935)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Schon genug oder kalorienlastig",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            Text(
+                                text = "🛑 Heute vermeiden",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFE53935)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Schon genug oder kalorienlastig",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
 
                         advice.avoidances.forEach { item ->

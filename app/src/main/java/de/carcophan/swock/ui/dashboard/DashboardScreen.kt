@@ -307,17 +307,24 @@ fun DashboardScreen(
             }
 
             // 2b. Vitamin Overview Card
-            item {
-                VitaminOverviewCard(meals = meals)
+            if (profile.showVitaminOverview) {
+                item {
+                    VitaminOverviewCard(meals = meals)
+                }
             }
 
             // 2c. Nutrition Advice Card
-            item {
-                NutritionAdviceCard(
-                    advice = effectiveAdvice,
-                    isGeneratingAi = isGeneratingAiAdvice,
-                    onRequestAiAdvice = onRequestAiAdvice
-                )
+            if (profile.showNutritionBalance || profile.showRecommendations || profile.showAvoidances) {
+                item {
+                    NutritionAdviceCard(
+                        advice = effectiveAdvice,
+                        isGeneratingAi = isGeneratingAiAdvice,
+                        onRequestAiAdvice = onRequestAiAdvice,
+                        showNutritionBalance = profile.showNutritionBalance,
+                        showRecommendations = profile.showRecommendations,
+                        showAvoidances = profile.showAvoidances
+                    )
+                }
             }
 
             // 3. Section Header

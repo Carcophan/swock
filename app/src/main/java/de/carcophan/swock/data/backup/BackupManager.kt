@@ -115,6 +115,10 @@ class BackupManager(
                     put("geminiApiKey", profile.geminiApiKey)
                     put("geminiModel", profile.geminiModel)
                     put("syncHealthConnect", profile.syncHealthConnect)
+                    put("showVitaminOverview", profile.showVitaminOverview)
+                    put("showNutritionBalance", profile.showNutritionBalance)
+                    put("showRecommendations", profile.showRecommendations)
+                    put("showAvoidances", profile.showAvoidances)
                 }.toString(2)
                 writeZipEntry(zos, "preferences/user_profile.json", profileJson.toByteArray(Charsets.UTF_8))
 
@@ -223,7 +227,11 @@ class BackupManager(
                         calorieGoal = try { CalorieGoal.valueOf(pJson.optString("calorieGoal")) } catch (e: Exception) { currentProf.calorieGoal },
                         geminiApiKey = pJson.optString("geminiApiKey", currentProf.geminiApiKey),
                         geminiModel = pJson.optString("geminiModel", currentProf.geminiModel),
-                        syncHealthConnect = pJson.optBoolean("syncHealthConnect", currentProf.syncHealthConnect)
+                        syncHealthConnect = pJson.optBoolean("syncHealthConnect", currentProf.syncHealthConnect),
+                        showVitaminOverview = pJson.optBoolean("showVitaminOverview", currentProf.showVitaminOverview),
+                        showNutritionBalance = pJson.optBoolean("showNutritionBalance", currentProf.showNutritionBalance),
+                        showRecommendations = pJson.optBoolean("showRecommendations", currentProf.showRecommendations),
+                        showAvoidances = pJson.optBoolean("showAvoidances", currentProf.showAvoidances)
                     )
                     profileRepository.updateProfile(restoredProfile)
                 } catch (e: Exception) {
