@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.Card
@@ -38,10 +39,11 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import de.carcophan.swock.data.health.HealthCaloriesResult
+import de.carcophan.swock.data.health.HealthConnectManager
 import de.carcophan.swock.data.preferences.UserProfileRepository
 import de.carcophan.swock.data.repository.MealRepository
 import de.carcophan.swock.domain.CalorieCalculator
@@ -56,23 +58,38 @@ import kotlin.math.abs
 fun HistoryScreen(
     mealRepository: MealRepository,
     profileRepository: UserProfileRepository,
+    healthConnectManager: HealthConnectManager? = null,
     onSelectDayAndNavigateToDashboard: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val availableDates by mealRepository.availableDates.collectAsState()
     val profile by profileRepository.profile.collectAsState()
-    val targetCalories = remember(profile) { CalorieCalculator.calculateDailyTarget(profile) }
+    val baseTargetCalories = remember(profile) { CalorieCalculator.calculateDailyTarget(profile) }
+    val tdee = remember(profile) { CalorieCalculator.calculateTdee(profile) }
 
     val dayMealsMap = remember { mutableStateMapOf<String, List<MealEntry>>() }
+    val dayHealthMap = remember { mutableStateMapOf<String, HealthCaloriesResult>() }
 
     val keyFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
     val displayFormat = remember { SimpleDateFormat("EEEE, d. MMMM yyyy", Locale.GERMAN) }
+    val todayDateKey = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
 
-    LaunchedEffect(availableDates) {
+    LaunchedEffect(availableDates, profile.syncHealthConnect) {
+        val hasHealthPerms = profile.syncHealthConnect &&
+            healthConnectManager?.isAvailable() == true &&
+            healthConnectManager.hasAllPermissions()
+
         for (dateKey in availableDates) {
             val list = mealRepository.getMealsForDateDirect(dateKey)
             dayMealsMap[dateKey] = list
+
+            if (hasHealthPerms) {
+                val healthResult = healthConnectManager!!.getBurnedCaloriesForDate(dateKey)
+                dayHealthMap[dateKey] = healthResult
+            } else {
+                dayHealthMap.remove(dateKey)
+            }
         }
     }
 
@@ -165,7 +182,25 @@ fun HistoryScreen(
                 items(availableDates, key = { it }) { dateKey ->
                     val meals = dayMealsMap[dateKey] ?: emptyList()
                     val totalCalories = meals.sumOf { it.calories }
-                    val status = CalorieCalculator.evaluateDay(totalCalories, targetCalories)
+                    val healthResult = dayHealthMap[dateKey]
+
+                    val hasTrackerData = healthResult != null && (healthResult.totalCaloriesBurned > 0 || healthResult.activeCaloriesBurned > 0)
+                    val isToday = dateKey == todayDateKey
+
+                    val activeBurned = if (profile.syncHealthConnect && healthResult != null) healthResult.activeCaloriesBurned else 0
+                    val dayTarget = if (profile.syncHealthConnect && activeBurned > 0) {
+                        CalorieCalculator.calculateDynamicTarget(profile, activeBurned)
+                    } else {
+                        baseTargetCalories
+                    }
+
+                    val status = CalorieCalculator.evaluateDay(totalCalories, dayTarget)
+
+                    val burnedCalories = if (hasTrackerData && healthResult!!.totalCaloriesBurned > 0) {
+                        healthResult.totalCaloriesBurned
+                    } else {
+                        tdee
+                    }
 
                     val formattedDate = try {
                         val parsed = keyFormat.parse(dateKey)
@@ -177,8 +212,13 @@ fun HistoryScreen(
                     HistoryDayCard(
                         dateTitle = formattedDate,
                         totalCalories = totalCalories,
-                        targetCalories = targetCalories,
+                        targetCalories = dayTarget,
                         mealCount = meals.size,
+                        burnedCalories = burnedCalories,
+                        activeBurnedCalories = activeBurned,
+                        isFromTracker = hasTrackerData && (healthResult?.totalCaloriesBurned ?: 0) > 0,
+                        isToday = isToday,
+                        projectedTotalForDay = healthResult?.projectedTotalForDay ?: 0,
                         isOver = status.isOverBudget,
                         difference = status.difference,
                         onClick = { onSelectDayAndNavigateToDashboard(dateKey) }
@@ -195,6 +235,11 @@ fun HistoryDayCard(
     totalCalories: Int,
     targetCalories: Int,
     mealCount: Int,
+    burnedCalories: Int,
+    activeBurnedCalories: Int,
+    isFromTracker: Boolean,
+    isToday: Boolean,
+    projectedTotalForDay: Int,
     isOver: Boolean,
     difference: Int,
     onClick: () -> Unit
@@ -224,6 +269,8 @@ fun HistoryDayCard(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+
+                // Consumed & Target Calories
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "$totalCalories",
@@ -243,28 +290,88 @@ fun HistoryDayCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
                 Spacer(modifier = Modifier.height(6.dp))
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = badgeBg
+
+                // Burned Calories Row
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Whatshot,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "$burnedCalories kcal",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    val burnSubtitle = when {
+                        isFromTracker && isToday && projectedTotalForDay > burnedCalories ->
+                            "bisher (24h: ~$projectedTotalForDay kcal)"
+                        isFromTracker && activeBurnedCalories > 0 ->
+                            "verbrannt (davon $activeBurnedCalories kcal aktiv)"
+                        isFromTracker ->
+                            "verbrannt (Tracker)"
+                        else ->
+                            "verbrannt (Gesamtbedarf)"
+                    }
+                    Text(
+                        text = burnSubtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Badges Row (Target status badge + actual net balance when tracker data available)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = badgeBg
                     ) {
-                        Icon(
-                            imageVector = if (isOver) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
-                            contentDescription = null,
-                            tint = badgeColor,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (isOver) "+${abs(difference)} kcal über Ziel" else "${difference} kcal im Defizit",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = badgeColor
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (isOver) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
+                                contentDescription = null,
+                                tint = badgeColor,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isOver) "+${abs(difference)} kcal über Ziel" else "${difference} kcal im Defizit",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = badgeColor
+                            )
+                        }
+                    }
+
+                    if (isFromTracker && !isToday && burnedCalories > 0) {
+                        val netDifference = burnedCalories - totalCalories
+                        val isNetDeficit = netDifference >= 0
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                text = if (isNetDeficit) "-$netDifference kcal Netto" else "+${abs(netDifference)} kcal Netto",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -277,3 +384,4 @@ fun HistoryDayCard(
         }
     }
 }
+

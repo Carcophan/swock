@@ -284,6 +284,7 @@ fun MainAppScreen(
                     Screen.HISTORY -> HistoryScreen(
                         mealRepository = viewModel.mealRepository,
                         profileRepository = viewModel.profileRepository,
+                        healthConnectManager = viewModel.healthConnectManager,
                         onSelectDayAndNavigateToDashboard = { dateKey ->
                             viewModel.mealRepository.selectDate(dateKey)
                             viewModel.currentScreen = Screen.DASHBOARD

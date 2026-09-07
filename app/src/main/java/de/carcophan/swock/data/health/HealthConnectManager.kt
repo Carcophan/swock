@@ -8,6 +8,8 @@ import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 data class HealthCaloriesResult(
     val totalCaloriesBurned: Int,
@@ -68,6 +70,36 @@ class HealthConnectManager(private val context: Context) {
                 totalCaloriesBurned = totalKcal,
                 activeCaloriesBurned = activeKcal
             )
+        } catch (e: Exception) {
+            HealthCaloriesResult(0, 0)
+        }
+    }
+
+    suspend fun getBurnedCaloriesForDate(dateKey: String): HealthCaloriesResult {
+        return try {
+            val localDate = LocalDate.parse(dateKey)
+            val todayStr = LocalDate.now().toString()
+            val isToday = dateKey == todayStr
+            val zoneId = ZoneId.systemDefault()
+            val startOfDay = localDate.atStartOfDay(zoneId).toInstant()
+            val endOfDay = localDate.plusDays(1).atStartOfDay(zoneId).toInstant()
+
+            if (isToday) {
+                val upToNow = getBurnedCalories(startOfDay, Instant.now())
+                val fullDay = getBurnedCalories(startOfDay, endOfDay)
+                HealthCaloriesResult(
+                    totalCaloriesBurned = upToNow.totalCaloriesBurned,
+                    activeCaloriesBurned = upToNow.activeCaloriesBurned,
+                    projectedTotalForDay = fullDay.totalCaloriesBurned
+                )
+            } else {
+                val fullDay = getBurnedCalories(startOfDay, endOfDay)
+                HealthCaloriesResult(
+                    totalCaloriesBurned = fullDay.totalCaloriesBurned,
+                    activeCaloriesBurned = fullDay.activeCaloriesBurned,
+                    projectedTotalForDay = fullDay.totalCaloriesBurned
+                )
+            }
         } catch (e: Exception) {
             HealthCaloriesResult(0, 0)
         }

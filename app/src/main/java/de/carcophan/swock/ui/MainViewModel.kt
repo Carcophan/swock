@@ -104,28 +104,7 @@ class MainViewModel(
 
     private suspend fun loadHealthCaloriesForDate(dateKey: String) {
         try {
-            val localDate = LocalDate.parse(dateKey)
-            val isToday = dateKey == mealRepository.currentDateKey()
-            val startOfDay = localDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
-            val endOfDay = localDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-
-            val result = if (isToday) {
-                val upToNow = healthConnectManager.getBurnedCalories(startOfDay, Instant.now())
-                val fullDay = healthConnectManager.getBurnedCalories(startOfDay, endOfDay)
-                HealthCaloriesResult(
-                    totalCaloriesBurned = upToNow.totalCaloriesBurned,
-                    activeCaloriesBurned = upToNow.activeCaloriesBurned,
-                    projectedTotalForDay = fullDay.totalCaloriesBurned
-                )
-            } else {
-                val fullDay = healthConnectManager.getBurnedCalories(startOfDay, endOfDay)
-                HealthCaloriesResult(
-                    totalCaloriesBurned = fullDay.totalCaloriesBurned,
-                    activeCaloriesBurned = fullDay.activeCaloriesBurned,
-                    projectedTotalForDay = fullDay.totalCaloriesBurned
-                )
-            }
-            _healthCaloriesForSelectedDate.value = result
+            _healthCaloriesForSelectedDate.value = healthConnectManager.getBurnedCaloriesForDate(dateKey)
         } catch (e: Exception) {
             _healthCaloriesForSelectedDate.value = null
         }

@@ -104,4 +104,32 @@ class CalorieCalculatorTest {
         val dynamicTarget = CalorieCalculator.calculateDynamicTarget(profile, activeCaloriesBurned)
         assertEquals(baseTarget + 450, dynamicTarget)
     }
+
+    @Test
+    fun testHistoricalDay_netCalorieDeficitAndTargetEvaluation() {
+        val profile = UserProfile(
+            age = 30,
+            gender = Gender.MALE,
+            heightCm = 180.0,
+            weightKg = 75.0,
+            activityLevel = ActivityLevel.LIGHT,
+            calorieGoal = CalorieGoal.DEFICIT_STANDARD
+        )
+        val baseTarget = CalorieCalculator.calculateDailyTarget(profile) // 1879
+        val activeCalories = 400
+        val dynamicTarget = CalorieCalculator.calculateDynamicTarget(profile, activeCalories) // 2279
+        assertEquals(2279, dynamicTarget)
+
+        val consumedCalories = 2100
+        val totalBurnedCalories = 2779 // BMR + daily activity + workout
+
+        // Target status
+        val status = CalorieCalculator.evaluateDay(consumedCalories, dynamicTarget)
+        assertFalse(status.isOverBudget)
+        assertEquals(179, status.difference) // 179 kcal under dynamic budget
+
+        // Real net deficit (Burned - Consumed)
+        val realNetDeficit = totalBurnedCalories - consumedCalories
+        assertEquals(679, realNetDeficit)
+    }
 }
